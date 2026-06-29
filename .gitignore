@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+
+# Secrets — the site registry with credentials NEVER goes in git.
+sites.json
+sites.local.json
+.env
+.env.*
+!.env.example

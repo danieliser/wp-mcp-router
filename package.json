@@ -1,0 +1,35 @@
+{
+  "name": "wp-fleet",
+  "version": "0.1.0",
+  "description": "Multi-site WordPress MCP router. Federates several mcp-adapter sites behind one MCP server with per-site capability discovery, search, and a site-mismatch guard.",
+  "type": "module",
+  "bin": {
+    "wp-fleet": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --import tsx ./test/*.test.ts",
+    "doctor": "tsx src/index.ts --doctor"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  },
+  "license": "GPL-2.0-or-later",
+  "author": "Daniel Iser",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danieliser/wp-fleet.git"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$comment": "Copy to sites.json (gitignored) and fill in real credentials, OR point WP_FLEET_CONFIG at a file like this, OR pass the whole object as the WP_FLEET_SITES env var. appPassword = a WordPress Application Password (Users → Profile → Application Passwords); spaces are fine.",
+  "defaultSite": "example",
+  "catalogTtlMs": 300000,
+  "requestTimeoutMs": 120000,
+  "sites": [
+    {
+      "id": "example",
+      "label": "Example Site",
+      "url": "https://example.com",
+      "username": "jarvis",
+      "appPassword": "xxxx xxxx xxxx xxxx xxxx xxxx",
+      "tags": ["ecommerce", "crm"]
+    },
+    {
+      "id": "another",
+      "label": "Another Site",
+      "url": "https://another.com",
+      "endpoint": "https://another.com/wp-json/mcp/my-custom-server",
+      "username": "jarvis",
+      "appPassword": "yyyy yyyy yyyy yyyy yyyy yyyy",
+      "excludeFromFanout": true
+    }
+  ]
+}
