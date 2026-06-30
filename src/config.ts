@@ -5,13 +5,13 @@
  * credentials, so it is NEVER committed — it is resolved at runtime, in priority
  * order, from:
  *
- *   1. WP_FLEET_SITES         — inline JSON (whole registry as one env var)
- *   2. WP_FLEET_CONFIG        — path to a JSON file
+ *   1. WP_MCP_ROUTER_SITES         — inline JSON (whole registry as one env var)
+ *   2. WP_MCP_ROUTER_CONFIG        — path to a JSON file
  *   3. ./sites.json           — next to the package (gitignored)
- *   4. ~/.config/wp-fleet/sites.json
+ *   4. ~/.config/wp-mcp-router/sites.json
  *
  * Per-site env fallback is also supported for single-site/dev use:
- *   WP_FLEET_DEFAULT_SITE, and the @automattic/mcp-wordpress-remote vars
+ *   WP_MCP_ROUTER_DEFAULT_SITE, and the @automattic/mcp-wordpress-remote vars
  *   WP_API_URL / WP_API_USERNAME / WP_API_PASSWORD.
  *
  * Nothing here is CompanyKit-specific: the file path, env var names, and the
@@ -102,19 +102,19 @@ function readJsonFile(path: string): RawConfig {
 }
 
 function resolveRawConfig(): { raw: RawConfig; source: string } {
-  if (process.env.WP_FLEET_SITES) {
+  if (process.env.WP_MCP_ROUTER_SITES) {
     try {
-      return { raw: JSON.parse(process.env.WP_FLEET_SITES) as RawConfig, source: "WP_FLEET_SITES env" };
+      return { raw: JSON.parse(process.env.WP_MCP_ROUTER_SITES) as RawConfig, source: "WP_MCP_ROUTER_SITES env" };
     } catch (err) {
-      throw new Error(`WP_FLEET_SITES is not valid JSON: ${(err as Error).message}`);
+      throw new Error(`WP_MCP_ROUTER_SITES is not valid JSON: ${(err as Error).message}`);
     }
   }
 
   const candidates = [
-    process.env.WP_FLEET_CONFIG,
+    process.env.WP_MCP_ROUTER_CONFIG,
     join(process.cwd(), "sites.json"),
     resolve(__dirname, "..", "sites.json"),
-    join(homedir(), ".config", "wp-fleet", "sites.json"),
+    join(homedir(), ".config", "wp-mcp-router", "sites.json"),
   ].filter(Boolean) as string[];
 
   for (const path of candidates) {
@@ -128,7 +128,7 @@ function resolveRawConfig(): { raw: RawConfig; source: string } {
       raw: {
         sites: [
           {
-            id: process.env.WP_FLEET_DEFAULT_SITE ?? url.hostname.replace(/^www\./, "").split(".")[0],
+            id: process.env.WP_MCP_ROUTER_DEFAULT_SITE ?? url.hostname.replace(/^www\./, "").split(".")[0],
             url: `${url.protocol}//${url.host}`,
             endpoint: process.env.WP_API_URL,
             username: process.env.WP_API_USERNAME,
@@ -141,7 +141,7 @@ function resolveRawConfig(): { raw: RawConfig; source: string } {
   }
 
   throw new Error(
-    "No site registry found. Set WP_FLEET_SITES (inline JSON), WP_FLEET_CONFIG (file path), " +
+    "No site registry found. Set WP_MCP_ROUTER_SITES (inline JSON), WP_MCP_ROUTER_CONFIG (file path), " +
       "or create ./sites.json. See sites.example.json.",
   );
 }
@@ -160,7 +160,7 @@ export function loadConfig(): { config: FleetConfig; source: string } {
   }
 
   const defaultSite =
-    raw.defaultSite ?? process.env.WP_FLEET_DEFAULT_SITE ?? (sites.length === 1 ? sites[0].id : undefined);
+    raw.defaultSite ?? process.env.WP_MCP_ROUTER_DEFAULT_SITE ?? (sites.length === 1 ? sites[0].id : undefined);
   if (defaultSite && !ids.has(defaultSite)) {
     throw new Error(`defaultSite "${defaultSite}" is not a configured site id.`);
   }
@@ -169,8 +169,8 @@ export function loadConfig(): { config: FleetConfig; source: string } {
     config: {
       sites,
       defaultSite,
-      catalogTtlMs: raw.catalogTtlMs ?? Number(process.env.WP_FLEET_CATALOG_TTL_MS ?? 5 * 60_000),
-      requestTimeoutMs: raw.requestTimeoutMs ?? Number(process.env.WP_FLEET_TIMEOUT_MS ?? 120_000),
+      catalogTtlMs: raw.catalogTtlMs ?? Number(process.env.WP_MCP_ROUTER_CATALOG_TTL_MS ?? 5 * 60_000),
+      requestTimeoutMs: raw.requestTimeoutMs ?? Number(process.env.WP_MCP_ROUTER_TIMEOUT_MS ?? 120_000),
     },
     source,
   };

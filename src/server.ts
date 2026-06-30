@@ -1,5 +1,5 @@
 /**
- * wp-fleet MCP server.
+ * wp-mcp-router MCP server.
  *
  * Exposes a small, stable tool surface that is identical regardless of how many
  * sites are behind it. Every site-targeting tool takes a `site` argument (falling
@@ -46,7 +46,7 @@ export function buildServer(config: FleetConfig): Server {
   };
 
   const server = new Server(
-    { name: "wp-fleet", version: "0.1.0" },
+    { name: "wp-mcp-router", version: "0.1.0" },
     { capabilities: { tools: {} } },
   );
 

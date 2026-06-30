@@ -1,4 +1,4 @@
-# wp-fleet
+# wp-mcp-router
 
 A multi-site WordPress MCP router. Put several [`mcp-adapter`](https://github.com/WordPress/mcp-adapter)
 WordPress sites behind **one** MCP server, with per-site capability discovery, cross-site
@@ -6,7 +6,7 @@ search, fan-out, and a guard that stops you from calling an ability on a site th
 
 It wraps the same WordPress endpoint the official
 [`@automattic/mcp-wordpress-remote`](https://www.npmjs.com/package/@automattic/mcp-wordpress-remote)
-proxy targets — but where that proxy is one-process-per-site, wp-fleet federates many sites and
+proxy targets — but where that proxy is one-process-per-site, wp-mcp-router federates many sites and
 routes by a `site` argument.
 
 ## Why
@@ -17,7 +17,7 @@ the abilities behind `discover-abilities` — **differs per site**. One site has
 FluentCRM, and AI abilities; another only has the block + SEO ones. Calling an ability on the
 wrong site is a silent failure waiting to happen.
 
-wp-fleet fixes that by making capabilities first-class:
+wp-mcp-router fixes that by making capabilities first-class:
 
 - **Discovery, cached per site** — it knows each site's real ability catalog.
 - **Search across the fleet** — "which site has `create-popup`?" before you call.
@@ -41,10 +41,10 @@ Every site-targeting tool takes a `site` argument; omit it to use the configured
 The site registry carries credentials, so it is **never committed**. It is resolved at runtime,
 in priority order:
 
-1. `WP_FLEET_SITES` — the whole registry as inline JSON in one env var.
-2. `WP_FLEET_CONFIG` — path to a JSON file.
+1. `WP_MCP_ROUTER_SITES` — the whole registry as inline JSON in one env var.
+2. `WP_MCP_ROUTER_CONFIG` — path to a JSON file.
 3. `./sites.json` next to the package (gitignored).
-4. `~/.config/wp-fleet/sites.json`.
+4. `~/.config/wp-mcp-router/sites.json`.
 
 For single-site/dev use it also falls back to the upstream proxy's own env contract
 (`WP_API_URL` / `WP_API_USERNAME` / `WP_API_PASSWORD`).
@@ -80,10 +80,10 @@ node dist/index.js
 ```jsonc
 {
   "mcpServers": {
-    "wp-fleet": {
+    "wp-mcp-router": {
       "command": "node",
-      "args": ["/path/to/wp-fleet/dist/index.js"],
-      "env": { "WP_FLEET_CONFIG": "/path/to/sites.json" }
+      "args": ["/path/to/wp-mcp-router/dist/index.js"],
+      "env": { "WP_MCP_ROUTER_CONFIG": "/path/to/sites.json" }
     }
   }
 }

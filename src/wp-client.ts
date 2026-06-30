@@ -144,7 +144,7 @@ export class WpClient {
           params: {
             protocolVersion: PROTOCOL_VERSION,
             capabilities: {},
-            clientInfo: { name: "wp-fleet", version: "0.1.0" },
+            clientInfo: { name: "wp-mcp-router", version: "0.1.0" },
           },
         },
         { withSession: false },

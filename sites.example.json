@@ -1,5 +1,5 @@
 {
-  "$comment": "Copy to sites.json (gitignored) and fill in real credentials, OR point WP_FLEET_CONFIG at a file like this, OR pass the whole object as the WP_FLEET_SITES env var. appPassword = a WordPress Application Password (Users → Profile → Application Passwords); spaces are fine.",
+  "$comment": "Copy to sites.json (gitignored) and fill in real credentials, OR point WP_MCP_ROUTER_CONFIG at a file like this, OR pass the whole object as the WP_MCP_ROUTER_SITES env var. appPassword = a WordPress Application Password (Users → Profile → Application Passwords); spaces are fine.",
   "defaultSite": "example",
   "catalogTtlMs": 300000,
   "requestTimeoutMs": 120000,

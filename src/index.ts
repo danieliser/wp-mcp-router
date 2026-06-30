@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * wp-fleet entry point.
+ * wp-mcp-router entry point.
  *
- *   wp-fleet            → start the MCP server on stdio
- *   wp-fleet --doctor   → load config, hit every site, report ability counts,
+ *   wp-mcp-router            → start the MCP server on stdio
+ *   wp-mcp-router --doctor   → load config, hit every site, report ability counts,
  *                         then exit (no MCP server). Use to verify connectivity.
  */
 
@@ -14,7 +14,7 @@ import { Catalog } from "./catalog.js";
 
 async function runDoctor(): Promise<number> {
   const { config, source } = loadConfig();
-  process.stderr.write(`wp-fleet doctor — config from ${source}\n`);
+  process.stderr.write(`wp-mcp-router doctor — config from ${source}\n`);
   process.stderr.write(`default site: ${config.defaultSite ?? "(none)"}\n\n`);
   const catalog = new Catalog(config);
   let failures = 0;
@@ -47,17 +47,17 @@ async function main() {
   try {
     config = loadConfig().config;
   } catch (err) {
-    process.stderr.write(`wp-fleet: ${(err as Error).message}\n`);
+    process.stderr.write(`wp-mcp-router: ${(err as Error).message}\n`);
     process.exit(1);
   }
 
   const server = buildServer(config);
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  process.stderr.write(`wp-fleet ready — ${config.sites.length} site(s): ${config.sites.map((s) => s.id).join(", ")}\n`);
+  process.stderr.write(`wp-mcp-router ready — ${config.sites.length} site(s): ${config.sites.map((s) => s.id).join(", ")}\n`);
 }
 
 main().catch((err) => {
-  process.stderr.write(`wp-fleet fatal: ${err?.stack ?? err}\n`);
+  process.stderr.write(`wp-mcp-router fatal: ${err?.stack ?? err}\n`);
   process.exit(1);
 });
