@@ -29,11 +29,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_MCP_PATH = "/wp-json/mcp/mcp-adapter-default-server";
 
 export interface SiteConfig {
-  /** Stable id used as the `site` argument value, e.g. "wppopupmaker". */
+  /** Stable id used as the `site` argument value, e.g. "main" or "shop". */
   id: string;
   /** Human label for list_sites output. */
   label?: string;
-  /** Site base URL, e.g. "https://wppopupmaker.com". */
+  /** Site base URL, e.g. "https://example.com". */
   url: string;
   /**
    * Full MCP endpoint URL. If omitted, derived as `${url}${DEFAULT_MCP_PATH}`.

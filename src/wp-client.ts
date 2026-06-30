@@ -2,7 +2,7 @@
  * Session-aware JSON-RPC client for one mcp-adapter site.
  *
  * The mcp-adapter "Streamable HTTP" transport is session-stateful (verified
- * against live wppopupmaker.com):
+ * against live sites running mcp-adapter):
  *
  *   1. POST `initialize`  → response carries an `Mcp-Session-Id` header.
  *   2. POST `notifications/initialized` with that header.
