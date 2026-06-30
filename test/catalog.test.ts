@@ -18,6 +18,7 @@ function makeConfig(): FleetConfig {
     defaultSite: "alpha",
     catalogTtlMs: 60_000,
     requestTimeoutMs: 1000,
+    initTimeoutMs: 500,
   };
 }
 

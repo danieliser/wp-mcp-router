@@ -3,6 +3,7 @@
   "defaultSite": "example",
   "catalogTtlMs": 300000,
   "requestTimeoutMs": 120000,
+  "initTimeoutMs": 25000,
   "sites": [
     {
       "id": "example",
@@ -20,6 +21,17 @@
       "username": "jarvis",
       "appPassword": "yyyy yyyy yyyy yyyy yyyy yyyy",
       "excludeFromFanout": true
+    },
+    {
+      "id": "behind-cf-access",
+      "label": "Site behind Cloudflare Access",
+      "url": "https://protected.example.com",
+      "username": "jarvis",
+      "appPassword": "zzzz zzzz zzzz zzzz zzzz zzzz",
+      "customHeaders": {
+        "CF-Access-Client-Id": "your-service-token-id.access",
+        "CF-Access-Client-Secret": "your-service-token-secret"
+      }
     }
   ]
 }

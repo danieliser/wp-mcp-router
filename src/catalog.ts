@@ -92,7 +92,7 @@ export class Catalog {
     if (!c) {
       const site = this.config.sites.find((s) => s.id === siteId);
       if (!site) throw new Error(`Unknown site "${siteId}".`);
-      c = new WpClient(site, this.config.requestTimeoutMs);
+      c = new WpClient(site, this.config.requestTimeoutMs, this.config.initTimeoutMs);
       this.clients.set(siteId, c);
     }
     return c;

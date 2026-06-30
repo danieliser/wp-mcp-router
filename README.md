@@ -96,6 +96,64 @@ plugin active (it registers the `/wp-json/mcp/…` endpoint), plus whatever abil
 plugins you want exposed. A site without `mcp-adapter` returns `rest_no_route` (404) — `doctor`
 reports that clearly.
 
+The deprecated [`wordpress-mcp`](https://github.com/Automattic/wordpress-mcp) plugin (which
+exposes its endpoint at `/wp-json/wp/v2/wpmcp`) is **not** supported — point at a custom
+`endpoint` URL if you have a non-default mcp-adapter server, otherwise install `mcp-adapter`.
+
+## Sites behind a WAF or Cloudflare Access
+
+Add a `customHeaders` object to a site entry. The headers are merged into every request and
+override the built-ins on conflict — use them for Cloudflare Access service tokens, Sucuri
+allow-list headers, or any other front-edge auth your origin requires:
+
+```jsonc
+{
+  "id": "protected",
+  "url": "https://protected.example.com",
+  "username": "jarvis",
+  "appPassword": "…",
+  "customHeaders": {
+    "CF-Access-Client-Id":     "<service-token-id>",
+    "CF-Access-Client-Secret": "<service-token-secret>"
+  }
+}
+```
+
+## Timeouts
+
+Two knobs, both in milliseconds:
+
+- `requestTimeoutMs` (default 120 000) — per tool-call timeout
+- `initTimeoutMs` (default 25 000) — tighter timeout for the `initialize` handshake.
+  Your MCP client waits on this at startup, so a dead site fails fast instead of stalling
+  the agent for two minutes.
+
+Override per-fleet in the config file or via `WP_MCP_ROUTER_TIMEOUT_MS` /
+`WP_MCP_ROUTER_INIT_TIMEOUT_MS` env vars.
+
+## Errors
+
+Network failures are translated to actionable messages naming the field most likely at fault:
+
+- DNS lookup failure → "DNS lookup failed for …, check the URL for typos"
+- Connection refused → "connection refused by …, check the site is up"
+- TLS hostname mismatch / expired cert → exact cert problem named
+- Timeouts → "timed out talking to …, raise requestTimeoutMs / initTimeoutMs"
+
+JSON-RPC errors from the upstream MCP server pass through with their code + message.
+
+## Not yet supported (PRs welcome)
+
+- **OAuth 2.1 with PKCE / dynamic client registration** — present in
+  [`@automattic/mcp-wordpress-remote`](https://www.npmjs.com/package/@automattic/mcp-wordpress-remote);
+  we currently only do app-password Basic auth, which is what `mcp-adapter` itself supports
+  natively. If your site requires OAuth, use the Automattic proxy in single-site mode for now.
+- **JWT auth** — same story, defer to the Automattic proxy.
+- **WooCommerce REST consumer key/secret auth** — same story.
+- **System HTTP/HTTPS/SOCKS proxy auto-detection** — Node's native `fetch` honors
+  `NODE_OPTIONS` and CA env vars but not `HTTPS_PROXY` by default. Set
+  `NODE_EXTRA_CA_CERTS` for self-signed CAs; for full proxy support open an issue.
+
 ## Security
 
 - Credentials live only in the gitignored registry / env — never in the repo.

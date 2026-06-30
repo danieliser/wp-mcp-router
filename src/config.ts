@@ -48,6 +48,14 @@ export interface SiteConfig {
   tags?: string[];
   /** When true, excluded from fan-out unless explicitly targeted. */
   excludeFromFanout?: boolean;
+  /**
+   * Extra HTTP request headers merged into every call to this site. Use for
+   * Cloudflare Access tokens (`CF-Access-Client-Id` / `CF-Access-Client-Secret`),
+   * Sucuri allow-list headers, custom WAF tokens, X-Forwarded-* spoofs against
+   * local-only origins, etc. Values override the built-in headers on conflict.
+   * Per-site to avoid leaking one site's auth header to another.
+   */
+  customHeaders?: Record<string, string>;
 }
 
 export interface FleetConfig {
@@ -56,8 +64,13 @@ export interface FleetConfig {
   defaultSite?: string;
   /** ms; how long a site's discovered ability catalog is cached. */
   catalogTtlMs: number;
-  /** ms; per-request timeout to a site endpoint. */
+  /** ms; per-tool-call timeout to a site endpoint. */
   requestTimeoutMs: number;
+  /**
+   * ms; tighter timeout for the `initialize` handshake (MCP clients wait on
+   * this at startup, so a slow handshake stalls the whole agent boot).
+   */
+  initTimeoutMs: number;
 }
 
 interface RawConfig {
@@ -65,6 +78,7 @@ interface RawConfig {
   defaultSite?: string;
   catalogTtlMs?: number;
   requestTimeoutMs?: number;
+  initTimeoutMs?: number;
 }
 
 function endpointFor(site: SiteConfig): string {
@@ -88,6 +102,7 @@ function normalizeSite(raw: Partial<SiteConfig>, index: number): SiteConfig {
     appPassword: raw.appPassword,
     tags: raw.tags ?? [],
     excludeFromFanout: raw.excludeFromFanout ?? false,
+    customHeaders: raw.customHeaders ?? undefined,
   };
   site.endpoint = endpointFor(site);
   return site;
@@ -171,6 +186,7 @@ export function loadConfig(): { config: FleetConfig; source: string } {
       defaultSite,
       catalogTtlMs: raw.catalogTtlMs ?? Number(process.env.WP_MCP_ROUTER_CATALOG_TTL_MS ?? 5 * 60_000),
       requestTimeoutMs: raw.requestTimeoutMs ?? Number(process.env.WP_MCP_ROUTER_TIMEOUT_MS ?? 120_000),
+      initTimeoutMs: raw.initTimeoutMs ?? Number(process.env.WP_MCP_ROUTER_INIT_TIMEOUT_MS ?? 25_000),
     },
     source,
   };
