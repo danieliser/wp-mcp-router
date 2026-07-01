@@ -76,3 +76,47 @@ test("checkAbility guards and reports other sites that have it", async () => {
   const shared = await c.checkAbility("beta", "core/get-site-info");
   assert.equal(shared.available, true);
 });
+
+test("getAbilityInfo caches per (site, ability) — second call hits cache", async () => {
+  const c = new Catalog(makeConfig());
+  let infoCalls = 0;
+  // Stub client to count get-ability-info invocations.
+  c.client = ((siteId: string) =>
+    ({
+      callTool: async (tool: string) => {
+        if (tool === "mcp-adapter-get-ability-info") {
+          infoCalls++;
+          return { content: [{ type: "text", text: JSON.stringify({ schema: { type: "object" }, site: siteId }) }] };
+        }
+        return { content: [{ type: "text", text: "{}" }] };
+      },
+    }) as any) as any;
+
+  // First call → remote fetch.
+  const a = await c.getAbilityInfo("alpha", "popup-maker/create-popup");
+  assert.equal(infoCalls, 1);
+  assert.ok(a && typeof a === "object");
+
+  // Second call for same (site, ability) → cache, no additional fetch.
+  const b = await c.getAbilityInfo("alpha", "popup-maker/create-popup");
+  assert.equal(infoCalls, 1, "second call must hit cache");
+  assert.deepEqual(a, b);
+
+  // Different ability on same site → cache miss.
+  await c.getAbilityInfo("alpha", "fluent-crm/list-contacts");
+  assert.equal(infoCalls, 2);
+
+  // force=true bypasses cache.
+  await c.getAbilityInfo("alpha", "popup-maker/create-popup", true);
+  assert.equal(infoCalls, 3, "force=true must bypass cache");
+});
+
+test("siteGroups returns distinct sorted namespaces + ability count", async () => {
+  const c = new Catalog(makeConfig());
+  stub(c);
+  const g = await c.siteGroups("alpha");
+  // alpha has core/, popup-maker/, fluent-crm/ — 3 distinct groups
+  assert.deepEqual(g.groups, ["core", "fluent-crm", "popup-maker"]);
+  assert.equal(g.abilityCount, 3);
+  assert.equal(g.error, undefined);
+});

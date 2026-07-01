@@ -55,7 +55,7 @@ export function buildServer(config: FleetConfig): Server {
       {
         name: "fleet_list_sites",
         description:
-          "List every WordPress site in the fleet with its label, tags, and the number of abilities it exposes. Call this first to see the map of what's where.",
+          "TIER 1 discovery — the fleet map. Returns each site's id, label, tags, ability count, and namespace GROUPS (e.g. 'popup-maker', 'fluent-crm'). Deliberately compact: no ability names, no schemas. Call this first to see which site is likely to have what you need, then use fleet_search_abilities to drill in.",
         inputSchema: {
           type: "object",
           properties: {
@@ -66,19 +66,19 @@ export function buildServer(config: FleetConfig): Server {
       {
         name: "fleet_search_abilities",
         description:
-          "Search abilities across the fleet by keyword (matches name, description, or namespace). Returns matches grouped by site so you can tell which site offers a capability before calling it. Empty query lists all abilities per site.",
+          "TIER 2 discovery — drill into abilities. Keyword search across sites' ability catalogs (matches name, description, or namespace). Returns matches grouped by site with names + descriptions but NOT full schemas. Empty query lists everything for the specified sites. Use fleet_get_ability for a specific ability's full schema.",
         inputSchema: {
           type: "object",
           properties: {
             query: { type: "string", description: "Keyword, e.g. 'popup', 'contact', 'create'. Empty = list all." },
-            sites: { type: "array", items: { type: "string" }, description: "Limit to these site ids (default: all)." },
+            sites: { type: "array", items: { type: "string" }, description: "Limit to these site ids (default: all). Narrow with fleet_list_sites first for large fleets." },
           },
         },
       },
       {
         name: "fleet_get_ability",
         description:
-          "Get the full input/output schema and description for one ability on one site. Use before wp_run to learn an ability's parameters.",
+          "TIER 3 discovery — the full input/output schema and description for one ability on one site. Call this before wp_run when you need to know the exact parameters. Result is cached per (site, ability) with the same TTL as the site catalog.",
         inputSchema: {
           type: "object",
           properties: {
@@ -129,20 +129,25 @@ export function buildServer(config: FleetConfig): Server {
           const refresh = args.refresh === true;
           const rows = await Promise.all(
             config.sites.map(async (s) => {
-              const cat = await catalog.getCatalog(s.id, refresh);
+              if (refresh) await catalog.getCatalog(s.id, true);
+              const { groups, error, abilityCount } = await catalog.siteGroups(s.id);
               return {
                 id: s.id,
                 label: s.label,
                 url: s.url,
                 tags: s.tags,
                 default: s.id === config.defaultSite,
-                ability_count: cat.abilities.length,
-                groups: [...new Set(cat.abilities.map((a) => a.group).filter(Boolean))].sort(),
-                ...(cat.error ? { error: cat.error } : {}),
+                ability_count: abilityCount,
+                groups,
+                ...(error ? { error } : {}),
               };
             }),
           );
-          return ok({ default_site: config.defaultSite, sites: rows });
+          return ok({
+            default_site: config.defaultSite,
+            sites: rows,
+            hint: "Use fleet_search_abilities({sites:['<id>']}) to see abilities on a specific site, or fleet_search_abilities({query:'…'}) to search across the fleet.",
+          });
         }
 
         case "fleet_search_abilities": {
