@@ -33,8 +33,21 @@ wp-mcp-router fixes that by making capabilities first-class:
 | `fleet_get_ability` | Input/output schema for one ability on one site. |
 | `wp_run` | Execute an ability on **one** site (guarded). |
 | `wp_run_across` | Execute the same ability on **many** sites in parallel (fan-out). |
+| `wp_get_content_by_url` | Resolve a URL/path → post (id, type, title, status), optionally with full content. One step instead of list-and-filter. |
 
 Every site-targeting tool takes a `site` argument; omit it to use the configured `defaultSite`.
+
+`wp_get_content_by_url` is a convenience wrapper over the site's URL-resolver ability
+(`gk-block-mcp/resolve-url`) — it fails with a clear message, naming sites that *can* resolve
+URLs, if the target site doesn't expose one. Pass `with_content: true` to also chain
+`gk-block-mcp/get-post-info` for the resolved post in the same call.
+
+### Roadmap
+
+- **`wp_sql_query`** (read-only SQL) — deferred until an installed plugin registers a SQL
+  ability. Unlike REST-based servers that bolt on a custom `execute_sql_query` endpoint, this
+  router only surfaces what the Abilities API exposes, so a SQL tool lights up automatically the
+  moment a site registers `…/execute-sql` (or similar) — no dead tool in the meantime.
 
 ## Configuration
 

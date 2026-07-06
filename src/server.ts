@@ -13,6 +13,7 @@
  *   fleet_get_ability       — input/output schema for one ability on one site
  *   wp_run                  — execute an ability on ONE site (guarded)
  *   wp_run_across           — execute the SAME ability on MANY sites (fan-out)
+ *   wp_get_content_by_url   — resolve a URL/path to its post (+optional content)
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -23,6 +24,10 @@ import {
 import type { FleetConfig } from "./config.js";
 import { Catalog, EXECUTE_TOOL } from "./catalog.js";
 
+/** Fleet-standard abilities used by the convenience wrappers. */
+const RESOLVE_URL_ABILITY = "gk-block-mcp/resolve-url";
+const GET_POST_INFO_ABILITY = "gk-block-mcp/get-post-info";
+
 function ok(data: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
 }
@@ -31,6 +36,29 @@ function fail(message: string, extra?: Record<string, unknown>) {
     isError: true,
     content: [{ type: "text" as const, text: JSON.stringify({ error: message, ...extra }, null, 2) }],
   };
+}
+
+/**
+ * Pull a post id out of a resolve-url tool result. The result envelope wraps a
+ * JSON text node; different resolvers use post_id / postId / id, so we probe a
+ * few shapes rather than assume one.
+ */
+function extractPostId(result: any): number | string | null {
+  let payload: any = result;
+  const content = result?.content;
+  if (Array.isArray(content)) {
+    const textNode = content.find((c: any) => c?.type === "text" && typeof c.text === "string");
+    if (textNode) {
+      try {
+        payload = JSON.parse(textNode.text);
+      } catch {
+        /* leave payload as-is */
+      }
+    }
+  }
+  const data = payload?.data ?? payload;
+  const id = data?.post_id ?? data?.postId ?? data?.id ?? null;
+  return typeof id === "number" || typeof id === "string" ? id : null;
 }
 
 export function buildServer(config: FleetConfig): Server {
@@ -114,6 +142,23 @@ export function buildServer(config: FleetConfig): Server {
             sites: { type: "array", items: { type: "string" }, description: "Target site ids (default: all not excluded from fan-out)." },
           },
           required: ["ability_name"],
+        },
+      },
+      {
+        name: "wp_get_content_by_url",
+        description:
+          "Resolve a WordPress URL (or site-relative path) to its underlying post/page — id, type, title, status — in one step, instead of listing content and filtering yourself. Optionally include the full post info. Requires the target site to expose a URL-resolve ability (gk-block-mcp/resolve-url); falls back with a clear message if it doesn't.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            site: siteEnum,
+            url: { type: "string", description: "Full URL (https://site/path/) or site-relative path (/path/)." },
+            with_content: {
+              type: "boolean",
+              description: "Also fetch full post info (get-post-info) for the resolved post. Default false.",
+            },
+          },
+          required: ["url"],
         },
       },
     ],
@@ -230,6 +275,55 @@ export function buildServer(config: FleetConfig): Server {
             },
             outcomes,
           });
+        }
+
+        case "wp_get_content_by_url": {
+          const site = resolveSite(args.site);
+          if ("error" in site) return fail(site.error);
+          const url = String(args.url ?? "").trim();
+          if (!url) return fail("url is required.");
+
+          // Find a URL-resolver ability the target site actually exposes.
+          // gk-block-mcp/resolve-url is the fleet-standard; leave room for
+          // other plugins to register an equivalent under a *resolve-url name.
+          const cat = await catalog.getCatalog(site.id);
+          const resolver =
+            cat.byName.has(RESOLVE_URL_ABILITY)
+              ? RESOLVE_URL_ABILITY
+              : cat.abilities.find((a) => /resolve[-_]?url$/i.test(a.name))?.name;
+          if (!resolver) {
+            const alsoOn = (await catalog.search("resolve-url", undefined))
+              .filter((r) => r.matches.length)
+              .map((r) => r.site);
+            return fail(`Site "${site.id}" has no URL-resolver ability.`, {
+              needed: RESOLVE_URL_ABILITY,
+              available_on: alsoOn,
+              hint: "Install/activate gk-block-mcp on this site, or use fleet_search_abilities to find a site that can resolve URLs.",
+            });
+          }
+
+          const resolved = await catalog
+            .client(site.id)
+            .callTool(EXECUTE_TOOL, { ability_name: resolver, parameters: { url } });
+
+          const out: Record<string, unknown> = { site: site.id, url, resolver, resolved };
+
+          // Optional deep fetch: chain to get-post-info if the site has it and
+          // we can extract a post id from the resolve result.
+          if (args.with_content === true && cat.byName.has(GET_POST_INFO_ABILITY)) {
+            const payload = extractPostId(resolved);
+            if (payload != null) {
+              out.content = await catalog
+                .client(site.id)
+                .callTool(EXECUTE_TOOL, {
+                  ability_name: GET_POST_INFO_ABILITY,
+                  parameters: { post_id: payload },
+                });
+            } else {
+              out.content_note = "Could not extract a post id from the resolve result to fetch full content.";
+            }
+          }
+          return ok(out);
         }
 
         default:
