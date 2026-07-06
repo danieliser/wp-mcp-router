@@ -11,11 +11,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { loadConfig } from "./config.js";
 import { buildServer } from "./server.js";
 import { Catalog } from "./catalog.js";
+import { auditStatus } from "./audit.js";
 
 async function runDoctor(): Promise<number> {
   const { config, source } = loadConfig();
   process.stderr.write(`wp-mcp-router doctor — config from ${source}\n`);
-  process.stderr.write(`default site: ${config.defaultSite ?? "(none)"}\n\n`);
+  process.stderr.write(`default site: ${config.defaultSite ?? "(none)"}\n`);
+  process.stderr.write(`${auditStatus()}\n\n`);
   const catalog = new Catalog(config);
   let failures = 0;
   for (const site of config.sites) {

@@ -24,6 +24,7 @@ import {
 import type { FleetConfig } from "./config.js";
 import { Catalog, EXECUTE_TOOL } from "./catalog.js";
 import { compactResult } from "./compact.js";
+import * as audit from "./audit.js";
 
 /** Fleet-standard abilities used by the convenience wrappers. */
 const RESOLVE_URL_ABILITY = "gk-block-mcp/resolve-url";
@@ -178,7 +179,37 @@ export function buildServer(config: FleetConfig): Server {
     const { name, arguments: rawArgs } = req.params;
     const args = (rawArgs ?? {}) as Record<string, unknown>;
 
+    // Every tool call is timed and audited in the request path — no invocation
+    // can bypass the log. record() is a no-op when WP_MCP_ROUTER_AUDIT=off.
+    const startedAt = Date.now();
+    const auditOf = (res: { isError?: boolean; content?: Array<{ text?: string }> }) => {
+      let error: string | undefined;
+      if (res?.isError) {
+        try {
+          error = JSON.parse(res.content?.[0]?.text ?? "{}")?.error;
+        } catch {
+          error = res.content?.[0]?.text;
+        }
+      }
+      audit.record({
+        tool: name,
+        site: typeof args.site === "string" ? args.site : undefined,
+        ability: typeof args.ability_name === "string" ? args.ability_name : undefined,
+        args,
+        durationMs: Date.now() - startedAt,
+        ok: !res?.isError,
+        error,
+      });
+      return res;
+    };
+
     try {
+      return auditOf(await handleTool());
+    } catch (err) {
+      return auditOf(fail((err as Error).message));
+    }
+
+    async function handleTool(): Promise<any> {
       switch (name) {
         case "fleet_list_sites": {
           const refresh = args.refresh === true;
@@ -346,8 +377,6 @@ export function buildServer(config: FleetConfig): Server {
         default:
           return fail(`Unknown tool "${name}".`);
       }
-    } catch (err) {
-      return fail((err as Error).message);
     }
   });
 

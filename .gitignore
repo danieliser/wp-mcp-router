@@ -8,3 +8,6 @@ sites.local.json
 .env
 .env.*
 !.env.example
+
+# local audit logs
+*.jsonl

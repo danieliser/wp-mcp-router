@@ -167,6 +167,35 @@ JSON-RPC errors from the upstream MCP server pass through with their code + mess
   `NODE_OPTIONS` and CA env vars but not `HTTPS_PROXY` by default. Set
   `NODE_EXTRA_CA_CERTS` for self-signed CAs; for full proxy support open an issue.
 
+## Audit log
+
+Every routed call is recorded to a client-side JSONL trail — a second, independent
+witness to the site-side log. **On by default.**
+
+- One JSON object per line: `ts`, `pid`, `tool`, `site`, `ability`, `args`, `durationMs`,
+  `ok`, `error`.
+- **Args are redacted by default** — keys matching `password`/`token`/`secret`/`api_key`/… are
+  masked. Oversized strings are clipped.
+- Enforced in the request path: no tool call can bypass the log. Write failures never break a
+  call (auditing observes, it doesn't gate).
+
+| Env var | Effect |
+| --- | --- |
+| `WP_MCP_ROUTER_AUDIT=off` | Disable the audit log entirely. |
+| `WP_MCP_ROUTER_AUDIT_FULL=1` | Log **full, unredacted** args. Only with a secured log location — the file becomes a secret sink. |
+| `WP_MCP_ROUTER_AUDIT_FILE=<path>` | Override the log path (default `~/.wp-mcp-router/audit.jsonl`). |
+
+The router log is a *client-side* trail — it sees what the router brokered, not raw SSH / WP-CLI
+you run outside it. For a site-side trail that captures every channel converging on the site,
+pair it with the [jarvis-agent-role](https://github.com/code-atlantic/jarvis-agent-role) plugin,
+which logs ability executions and WP-CLI commands on the WordPress side.
+
+## Compaction
+
+`wp_run` / `wp_run_across` accept `compact: true` to losslessly strip `_links` / `_embedded`
+(HAL hypermedia) from results. Abilities API responses are usually already lean, so the savings
+are modest — the flag earns its keep when an ability wraps a raw `wp/v2` REST object.
+
 ## Security
 
 - Credentials live only in the gitignored registry / env — never in the repo.
