@@ -1,23 +1,48 @@
 # wp-mcp-router
 
-A multi-site WordPress MCP router. Put several [`mcp-adapter`](https://github.com/WordPress/mcp-adapter)
-WordPress sites behind **one** MCP server, with per-site capability discovery, cross-site
-search, fan-out, and a guard that stops you from calling an ability on a site that doesn't have it.
+**One MCP connection for a whole fleet of WordPress sites — routing to any plugin's abilities, on any site, by name.**
 
-It wraps the same WordPress endpoint the official
-[`@automattic/mcp-wordpress-remote`](https://www.npmjs.com/package/@automattic/mcp-wordpress-remote)
-proxy targets — but where that proxy is one-process-per-site, wp-mcp-router federates many sites and
-routes by a `site` argument.
+Connect once in Claude / Cursor / any MCP client and address your sites the way you already do on
+the command line: `ssh wppopupmaker`, `wp @wppopupmaker …` → `wp_run({ site: "wppopupmaker", … })`.
+wp-mcp-router discovers what each site can actually do (via the WordPress
+[Abilities API](https://developer.wordpress.org/news/2026/02/from-abilities-to-ai-agents-introducing-the-wordpress-mcp-adapter/)
++ [`mcp-adapter`](https://github.com/WordPress/mcp-adapter)), lets you search across all of them, runs
+abilities on one site or fans out across many, and **stops you from calling a tool on a site that
+doesn't have it** — turning a confusing remote error into *"not on B; available on A and C."*
 
-## Why
+## Where this fits
+
+The WordPress-MCP space forked along two axes — **what** you talk to (WordPress core `/wp/v2` REST vs
+the plugin-driven Abilities API) and **how many** sites (single vs federated):
+
+| | Single site | **Federated (many sites)** |
+| --- | --- | --- |
+| **Core `/wp/v2` REST** | — | [InstaWP/mcp-wp](https://github.com/InstaWP/mcp-wp), [docdyhr/mcp-wordpress](https://www.npmjs.com/package/mcp-wordpress), [emzimmer/server-wp-mcp](https://github.com/emzimmer/server-wp-mcp) |
+| **Abilities API** | [`@automattic/mcp-wordpress-remote`](https://www.npmjs.com/package/@automattic/mcp-wordpress-remote), [Easy MCP AI](https://wordpress.org/plugins/easy-mcp-ai/), [Royal MCP](https://wordpress.org/plugins/royal-mcp/) | **wp-mcp-router** |
+
+The REST-based tools ship a **fixed, hand-authored** tool set — they can't see a plugin's own
+abilities (Popup Maker's popups, FluentCRM's contacts, GravityKit's blocks) unless someone codes
+support for each. The Abilities-API tools surface whatever a plugin registers — but are
+**single-site**, one connection per site, each blind to the others.
+
+wp-mcp-router is the one in the bottom-right cell: **plugin-driven abilities, federated across the
+fleet.** If a plugin registers an ability, it appears here automatically — across every site — from
+one connection. As the Abilities API ecosystem grows, this surface grows with it, for free.
+
+It builds directly on Automattic's excellent [`mcp-wordpress-remote`](https://www.npmjs.com/package/@automattic/mcp-wordpress-remote)
+groundwork — same WordPress endpoint, same session handshake, the same battle-tested error handling
+and timeout defaults — but where that proxy is one process per site, this federates many and routes
+by a `site` argument.
+
+## Why the guard matters
 
 `mcp-adapter` exposes the same three meta-tools on every site
 (`discover-abilities`, `get-ability-info`, `execute-ability`). The *real* capability surface —
 the abilities behind `discover-abilities` — **differs per site**. One site has Popup Maker,
-FluentCRM, and AI abilities; another only has the block + SEO ones. Calling an ability on the
+FluentCRM, and AI abilities; another only the block + SEO ones. Calling an ability on the
 wrong site is a silent failure waiting to happen.
 
-wp-mcp-router fixes that by making capabilities first-class:
+wp-mcp-router makes capabilities first-class:
 
 - **Discovery, cached per site** — it knows each site's real ability catalog.
 - **Search across the fleet** — "which site has `create-popup`?" before you call.
@@ -37,17 +62,20 @@ wp-mcp-router fixes that by making capabilities first-class:
 
 Every site-targeting tool takes a `site` argument; omit it to use the configured `defaultSite`.
 
-`wp_get_content_by_url` is a convenience wrapper over the site's URL-resolver ability
-(`gk-block-mcp/resolve-url`) — it fails with a clear message, naming sites that *can* resolve
-URLs, if the target site doesn't expose one. Pass `with_content: true` to also chain
-`gk-block-mcp/get-post-info` for the resolved post in the same call.
+`wp_get_content_by_url` is a URL/path → post resolver (the ergonomic idea is borrowed from
+InstaWP's `find_content_by_url`, re-implemented ability-native rather than against `/wp/v2`). It
+wraps the site's URL-resolver ability (`gk-block-mcp/resolve-url`), fails with a clear message —
+naming sites that *can* resolve URLs — if the target doesn't expose one, and with
+`with_content: true` chains `gk-block-mcp/get-post-info` for the resolved post in one call.
 
-### Roadmap
+### On SQL, and the abilities-native philosophy
 
-- **`wp_sql_query`** (read-only SQL) — deferred until an installed plugin registers a SQL
-  ability. Unlike REST-based servers that bolt on a custom `execute_sql_query` endpoint, this
-  router only surfaces what the Abilities API exposes, so a SQL tool lights up automatically the
-  moment a site registers `…/execute-sql` (or similar) — no dead tool in the meantime.
+There's no built-in `sql_query` tool, on purpose. This router surfaces only what the Abilities API
+exposes — it doesn't bolt a bespoke `/wp/v2`-style SQL endpoint onto WordPress the way some
+REST-based servers do. Instead, ability-providing plugins own their surface: the companion
+[jarvis-agent-role](https://github.com/code-atlantic/jarvis-agent-role) plugin registers a gated,
+read-only `jarvis/execute-sql` ability, and it appears here automatically — routed, guarded, and
+audited like any other. Any plugin that registers a SQL (or any) ability lights up the same way.
 
 ## Configuration
 
