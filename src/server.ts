@@ -23,6 +23,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import type { FleetConfig } from "./config.js";
 import { Catalog, EXECUTE_TOOL } from "./catalog.js";
+import { compactResult } from "./compact.js";
 
 /** Fleet-standard abilities used by the convenience wrappers. */
 const RESOLVE_URL_ABILITY = "gk-block-mcp/resolve-url";
@@ -126,6 +127,11 @@ export function buildServer(config: FleetConfig): Server {
             site: siteEnum,
             ability_name: { type: "string", description: "Full ability name, e.g. 'core/get-site-info'." },
             arguments: { type: "object", description: "Arguments object for the ability (see fleet_get_ability)." },
+            compact: {
+              type: "boolean",
+              description:
+                "Losslessly strip _links / _embedded (HAL hypermedia noise) from the result to save context. Default false. No data an agent acts on is removed.",
+            },
           },
           required: ["ability_name"],
         },
@@ -140,6 +146,10 @@ export function buildServer(config: FleetConfig): Server {
             ability_name: { type: "string", description: "Full ability name to run on each site." },
             arguments: { type: "object", description: "Arguments applied to every site." },
             sites: { type: "array", items: { type: "string" }, description: "Target site ids (default: all not excluded from fan-out)." },
+            compact: {
+              type: "boolean",
+              description: "Losslessly strip _links / _embedded from each site's result. Default false.",
+            },
           },
           required: ["ability_name"],
         },
@@ -236,13 +246,19 @@ export function buildServer(config: FleetConfig): Server {
             });
           }
 
-          const result = await catalog
+          let result = await catalog
             .client(site.id)
             .callTool(EXECUTE_TOOL, {
               ability_name: abilityName,
               parameters: (args.arguments as object) ?? {},
             });
-          return ok({ site: site.id, ability: abilityName, result });
+          let compaction: { bytes_before: number; bytes_after: number } | undefined;
+          if (args.compact === true) {
+            const c = compactResult(result);
+            result = c.result;
+            compaction = { bytes_before: c.bytesBefore, bytes_after: c.bytesAfter };
+          }
+          return ok({ site: site.id, ability: abilityName, result, ...(compaction ? { compaction } : {}) });
         }
 
         case "wp_run_across": {
@@ -256,10 +272,11 @@ export function buildServer(config: FleetConfig): Server {
               try {
                 const check = await catalog.checkAbility(id, abilityName);
                 if (!check.available) return { site: id, status: "skipped" as const, reason: "ability not available" };
-                const result = await catalog.client(id).callTool(EXECUTE_TOOL, {
+                let result = await catalog.client(id).callTool(EXECUTE_TOOL, {
                   ability_name: abilityName,
                   parameters: params,
                 });
+                if (args.compact === true) result = compactResult(result).result;
                 return { site: id, status: "ok" as const, result };
               } catch (err) {
                 return { site: id, status: "error" as const, error: (err as Error).message };
