@@ -5,6 +5,16 @@
 First public release. Multi-site WordPress MCP router: one MCP connection for a
 fleet of `mcp-adapter` (Abilities API) sites.
 
+### Onboarding (zero-friction)
+
+- `wp-mcp-router add-site [url]` — connect a site via WordPress core's Application
+  Passwords authorization flow: opens the browser, the user clicks "Approve", and the
+  minted credential is caught on a localhost callback, written to the registry, and
+  verified against the live MCP endpoint. No manual credential copying.
+- `wp-mcp-router install [client]` — auto-detect and inject the server into Claude
+  Desktop / Claude Code / Cursor config (merges, backs up, never clobbers).
+- `wp-mcp-router setup` — guided one-shot wizard chaining both.
+
 ### Tools
 
 - `fleet_list_sites` — the fleet map (sites, tags, ability counts, namespace groups).

@@ -10,6 +10,34 @@ wp-mcp-router discovers what each site can actually do (via the WordPress
 abilities on one site or fans out across many, and **stops you from calling a tool on a site that
 doesn't have it** — turning a confusing remote error into *"not on B; available on A and C."*
 
+## Quick start
+
+Two commands. No hunting through wp-admin for credentials, no editing JSON by hand.
+
+```bash
+# 1. Connect a WordPress site. Opens your browser; you click "Approve" and
+#    WordPress mints a scoped, revocable application password for you.
+npx wp-mcp-router add-site example.com
+
+# 2. Wire it into your AI client (auto-detects Claude Desktop / Claude Code / Cursor).
+npx wp-mcp-router install
+```
+
+Restart your client and you're connected. Add more sites any time with
+`npx wp-mcp-router add-site another-site.com` — they all live behind the one connection.
+
+Prefer a guided walk-through? `npx wp-mcp-router setup` does both steps interactively.
+Want to check everything? `npx wp-mcp-router --doctor`.
+
+> The credential comes from WordPress core's built-in **Application Passwords authorization
+> flow** (WP 5.6+, on by default over HTTPS) — the same "approve in your browser" UX as OAuth,
+> no plugin required. The password is scoped to this app, revocable from your profile, and never
+> touches your clipboard. Scope it tighter by approving as a limited-role user (e.g. an
+> "admin-minus" account — see [jarvis-agent-role](https://github.com/code-atlantic/jarvis-agent-role)).
+
+Each target site also needs the [`mcp-adapter`](https://github.com/WordPress/mcp-adapter) plugin
+active (it registers the `/wp-json/mcp/…` endpoint the router talks to).
+
 ## Where this fits
 
 The WordPress-MCP space forked along two axes — **what** you talk to (WordPress core `/wp/v2` REST vs
@@ -103,31 +131,33 @@ WordPress **Application Password** (`appPassword`). The MCP endpoint defaults to
 }
 ```
 
-## Usage
+## Manual setup (from source, or without the wizard)
 
-```bash
-npm install
-npm run build
-
-# Verify connectivity to every configured site (no MCP server, just a report):
-npm run doctor
-
-# Run as an MCP stdio server:
-node dist/index.js
-```
-
-### As an MCP server (Claude Code / Claude Desktop)
+If you'd rather not use `add-site` / `install`, wire it up by hand. The MCP client
+config `install` writes is just this:
 
 ```jsonc
 {
   "mcpServers": {
     "wp-mcp-router": {
-      "command": "node",
-      "args": ["/path/to/wp-mcp-router/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "wp-mcp-router"],
       "env": { "WP_MCP_ROUTER_CONFIG": "/path/to/sites.json" }
     }
   }
 }
+```
+
+And the registry (`sites.json`) is the file described under **Configuration** below — copy
+`sites.example.json` and fill in each site's `url`, `username`, and an
+[Application Password](https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/).
+
+From a source checkout:
+
+```bash
+npm install && npm run build
+npm run doctor            # connectivity + ability report, no server
+node dist/index.js        # run as an MCP stdio server
 ```
 
 ## Requirements

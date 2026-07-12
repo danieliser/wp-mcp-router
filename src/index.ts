@@ -2,9 +2,13 @@
 /**
  * wp-mcp-router entry point.
  *
- *   wp-mcp-router            → start the MCP server on stdio
- *   wp-mcp-router --doctor   → load config, hit every site, report ability counts,
- *                         then exit (no MCP server). Use to verify connectivity.
+ *   wp-mcp-router                 → start the MCP server on stdio (default)
+ *   wp-mcp-router setup           → guided first-run: connect a site + wire in a client
+ *   wp-mcp-router add-site [url]   → connect a WordPress site via the browser
+ *                                    (Application Passwords authorize flow)
+ *   wp-mcp-router install [client] → inject the server into Claude / Cursor config
+ *   wp-mcp-router --doctor         → hit every site, report ability counts, exit
+ *   wp-mcp-router --help           → usage
  */
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -12,6 +16,25 @@ import { loadConfig } from "./config.js";
 import { buildServer } from "./server.js";
 import { Catalog } from "./catalog.js";
 import { auditStatus } from "./audit.js";
+import { addSite, install, setup } from "./setup.js";
+
+const HELP = `wp-mcp-router — one MCP connection for a fleet of WordPress sites
+
+Usage:
+  wp-mcp-router                  Start the MCP server (stdio). This is what your
+                                 AI client runs.
+  wp-mcp-router setup            Guided setup: connect a site in your browser,
+                                 then wire it into Claude / Cursor. Start here.
+  wp-mcp-router add-site [url]    Connect one WordPress site. Opens the browser
+                                 to approve; no manual credential copying.
+  wp-mcp-router install [client] Add wp-mcp-router to an MCP client's config
+                                 (Claude Desktop | Claude Code | Cursor).
+  wp-mcp-router --doctor         Check connectivity + list abilities per site.
+  wp-mcp-router --help           This message.
+
+Config: sites live in a gitignored registry (./sites.json, WP_MCP_ROUTER_CONFIG,
+or ~/.config/wp-mcp-router/sites.json). See sites.example.json.
+`;
 
 async function runDoctor(): Promise<number> {
   const { config, source } = loadConfig();
@@ -41,15 +64,36 @@ async function runDoctor(): Promise<number> {
 }
 
 async function main() {
-  if (process.argv.includes("--doctor")) {
+  const args = process.argv.slice(2);
+  const cmd = args.find((a) => !a.startsWith("-"));
+
+  if (args.includes("--help") || args.includes("-h") || cmd === "help") {
+    process.stdout.write(HELP);
+    process.exit(0);
+  }
+  if (args.includes("--doctor") || cmd === "doctor") {
     process.exit(await runDoctor());
   }
+  if (cmd === "setup") {
+    process.exit(await setup());
+  }
+  if (cmd === "add-site") {
+    // The URL (if any) is the first non-flag arg after the command.
+    const url = args.filter((a) => !a.startsWith("-"))[1];
+    process.exit(await addSite(url));
+  }
+  if (cmd === "install") {
+    const client = args.filter((a) => !a.startsWith("-")).slice(1).join(" ") || undefined;
+    process.exit(await install(client));
+  }
 
+  // No recognized subcommand → run as the MCP stdio server.
   let config;
   try {
     config = loadConfig().config;
   } catch (err) {
     process.stderr.write(`wp-mcp-router: ${(err as Error).message}\n`);
+    process.stderr.write(`\nNo sites configured yet. Run:  wp-mcp-router setup\n`);
     process.exit(1);
   }
 
