@@ -1,5 +1,10 @@
 # wp-mcp-router
 
+[![npm version](https://img.shields.io/npm/v/wp-mcp-router.svg)](https://www.npmjs.com/package/wp-mcp-router)
+[![CI](https://github.com/danieliser/wp-mcp-router/actions/workflows/ci.yml/badge.svg)](https://github.com/danieliser/wp-mcp-router/actions/workflows/ci.yml)
+[![node](https://img.shields.io/node/v/wp-mcp-router.svg)](https://www.npmjs.com/package/wp-mcp-router)
+[![license](https://img.shields.io/npm/l/wp-mcp-router.svg)](./LICENSE)
+
 **One MCP connection for a whole fleet of WordPress sites — routing to any plugin's abilities, on any site, by name.**
 
 Connect once in Claude / Cursor / any MCP client and address your sites the way you already do on

@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22]
+    name: node ${{ matrix.node-version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify the npm tarball never ships credentials
+        # Even with a credential-bearing sites.json present, `npm pack` must
+        # exclude it. Fail the build if it ever leaks into the tarball.
+        run: |
+          echo '{"sites":[{"id":"x","url":"https://x.test","username":"u","appPassword":"LEAK_CANARY"}]}' > sites.json
+          if npm pack --dry-run 2>&1 | grep -q "sites.json"; then
+            echo "::error::sites.json is present in the npm tarball — credential leak!"
+            exit 1
+          fi
+          echo "ok: sites.json is excluded from the tarball"
+          rm -f sites.json
