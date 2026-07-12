@@ -206,11 +206,13 @@ witness to the site-side log. **On by default.**
   masked. Oversized strings are clipped.
 - Enforced in the request path: no tool call can bypass the log. Write failures never break a
   call (auditing observes, it doesn't gate).
+- The log file is created `0600` and its directory `0700` (owner-only), so it isn't
+  world-readable. In `FULL` mode the server also prints a one-time stderr warning.
 
 | Env var | Effect |
 | --- | --- |
 | `WP_MCP_ROUTER_AUDIT=off` | Disable the audit log entirely. |
-| `WP_MCP_ROUTER_AUDIT_FULL=1` | Log **full, unredacted** args. Only with a secured log location — the file becomes a secret sink. |
+| `WP_MCP_ROUTER_AUDIT_FULL=1` | Log **full, unredacted** args. The file becomes a secret sink — it's kept `0600`, but only enable this with a log location you control. |
 | `WP_MCP_ROUTER_AUDIT_FILE=<path>` | Override the log path (default `~/.wp-mcp-router/audit.jsonl`). |
 
 The router log is a *client-side* trail — it sees what the router brokered, not raw SSH / WP-CLI

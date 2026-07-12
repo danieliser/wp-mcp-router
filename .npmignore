@@ -1,0 +1,11 @@
+# Hard block credential/secret files from ever entering the npm tarball,
+# independent of the package.json "files" whitelist. Defense in depth.
+sites.json
+sites.local.json
+*.jsonl
+.env
+.env.*
+src/
+test/
+tsconfig.json
+.gitignore

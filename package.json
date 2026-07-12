@@ -1,23 +1,45 @@
 {
   "name": "wp-mcp-router",
   "version": "0.1.0",
-  "description": "Multi-site WordPress MCP router. Federates several mcp-adapter sites behind one MCP server with per-site capability discovery, search, and a site-mismatch guard.",
+  "description": "One MCP connection for a fleet of WordPress sites. Federates several mcp-adapter (Abilities API) sites behind a single MCP server with per-site capability discovery, cross-site search, fan-out, and a site-mismatch guard.",
   "type": "module",
   "bin": {
     "wp-mcp-router": "./dist/index.js"
   },
   "main": "./dist/index.js",
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "sites.example.json"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test --import tsx ./test/*.test.ts",
-    "doctor": "tsx src/index.ts --doctor"
+    "doctor": "tsx src/index.ts --doctor",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
   },
   "engines": {
     "node": ">=20"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "wordpress",
+    "wp",
+    "abilities-api",
+    "mcp-adapter",
+    "multi-site",
+    "federation",
+    "ai",
+    "claude",
+    "cursor"
+  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0"
   },
@@ -28,6 +50,10 @@
   },
   "license": "GPL-2.0-or-later",
   "author": "Daniel Iser",
+  "homepage": "https://github.com/danieliser/wp-mcp-router#readme",
+  "bugs": {
+    "url": "https://github.com/danieliser/wp-mcp-router/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/danieliser/wp-mcp-router.git"

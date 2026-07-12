@@ -20,7 +20,7 @@
  *     auditing observes, it doesn't gate.
  */
 
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, chmodSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -107,9 +107,21 @@ export interface AuditEntry {
  * the router. `timestamp` is injected by the caller (the workflow/runtime owns
  * the clock) or defaults to an ISO string here.
  */
+let warnedFullMode = false;
+
 export function record(entry: AuditEntry): void {
   if (envOff()) return;
   try {
+    // In FULL mode the log holds unredacted args, which may include secrets.
+    // Warn once so an operator who flips the flag can't miss the implication.
+    if (fullMode() && !warnedFullMode) {
+      warnedFullMode = true;
+      process.stderr.write(
+        `wp-mcp-router: WP_MCP_ROUTER_AUDIT_FULL is on — the audit log stores UNREDACTED args ` +
+          `and may contain secrets. It is created 0600; keep its directory private.\n`,
+      );
+    }
+
     const line = {
       ts: new Date().toISOString(),
       pid: process.pid,
@@ -117,8 +129,17 @@ export function record(entry: AuditEntry): void {
       args: entry.args === undefined ? undefined : fullMode() ? entry.args : redact(entry.args),
     };
     const path = auditPath();
-    mkdirSync(dirname(path), { recursive: true });
-    appendFileSync(path, JSON.stringify(line) + "\n", "utf8");
+    // Restrictive perms: the log can carry sensitive request metadata (and, in
+    // FULL mode, secrets). 0700 dir / 0600 file so only the owner can read it.
+    // mode on mkdir/appendFile is masked by umask, so we also chmod best-effort.
+    mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+    appendFileSync(path, JSON.stringify(line) + "\n", { encoding: "utf8", mode: 0o600 });
+    try {
+      chmodSync(path, 0o600);
+      chmodSync(dirname(path), 0o700);
+    } catch {
+      /* best-effort — not all filesystems honor chmod (e.g. Windows). */
+    }
   } catch {
     /* auditing observes; it never gates the request. */
   }

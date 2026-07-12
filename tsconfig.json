@@ -10,8 +10,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "declaration": false,
-    "sourceMap": true,
+    "declaration": true,
+    "sourceMap": false,
     "resolveJsonModule": true
   },
   "include": ["src/**/*"],
