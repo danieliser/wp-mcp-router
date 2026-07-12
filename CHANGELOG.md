@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.1 — Robust add-site (manual paste by default)
+
+Fixes `add-site` failing on production / managed WordPress sites.
+
+- `add-site` now uses the **manual paste** flow by default: you approve in the
+  browser, WordPress shows the application password, you paste it back. This
+  works on every site — no localhost callback for a security plugin or a strict
+  success_url check to reject.
+- The previous localhost-callback flow is now opt-in via `add-site --auto`
+  (and auto-falls-back to manual if the callback is rejected). Root cause: WP
+  requires the authorize `success_url` to be HTTPS or a bare loopback host, and
+  many production sites / security plugins reject `http://127.0.0.1:<port>`,
+  leaving the CLI waiting while the browser shows the error.
+
 ## 0.2.0 — Zero-friction onboarding
 
 Adds a browser-based setup flow so connecting a site takes two commands and no

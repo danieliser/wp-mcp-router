@@ -26,7 +26,10 @@ Usage:
   wp-mcp-router setup            Guided setup: connect a site in your browser,
                                  then wire it into Claude / Cursor. Start here.
   wp-mcp-router add-site [url]    Connect one WordPress site. Opens the browser
-                                 to approve; no manual credential copying.
+                                 to approve; WordPress shows the password, you
+                                 paste it. Add --auto to catch it via a
+                                 localhost callback instead (nicer, but many
+                                 production sites reject the loopback URL).
   wp-mcp-router install [client] Add wp-mcp-router to an MCP client's config
                                  (Claude Desktop | Claude Code | Cursor).
   wp-mcp-router --doctor         Check connectivity + list abilities per site.

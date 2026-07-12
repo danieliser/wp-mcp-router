@@ -209,6 +209,35 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
+/**
+ * Manual fallback: open the authorize page WITHOUT a success_url so WordPress
+ * shows the generated password on-screen, then have the user paste it back.
+ * Works on every WordPress config — no localhost callback, so nothing for a
+ * security plugin or a strict success_url check to reject.
+ */
+async function manualAuthorize(siteUrl: string): Promise<AuthResult> {
+  const authorizeUrl =
+    `${siteUrl}/wp-admin/authorize-application.php` +
+    `?app_name=${encodeURIComponent(APP_NAME)}` +
+    `&app_id=${randomUUID()}`;
+
+  log();
+  log("Opening the WordPress authorization page. Approve, then WordPress will");
+  log("SHOW you an application password. Copy it and paste it here.");
+  log();
+  log("If your browser didn't open, visit this URL manually:");
+  log(`  ${authorizeUrl}`);
+  log();
+  openBrowser(authorizeUrl);
+
+  const username = await prompt("WordPress username shown on the approval page: ");
+  const password = await prompt("Application password (paste it, spaces are fine): ");
+  if (!username.trim() || !password.trim()) {
+    throw new Error("Username and application password are both required.");
+  }
+  return { user_login: username.trim(), password: password.trim() };
+}
+
 /* ------------------------------------------------------------- add-site -- */
 
 /**
@@ -231,14 +260,34 @@ export async function addSite(argUrl?: string): Promise<number> {
 
   log(`\nConnecting to ${siteUrl} …`);
 
+  // Two paths to the same credential:
+  //   • Manual (default) — WordPress shows the password after you approve, and
+  //     you paste it here. Works on EVERY site: no localhost callback, so
+  //     nothing for a security plugin or a strict success_url check to reject.
+  //   • Automatic (--auto) — a localhost callback catches the password so you
+  //     don't paste anything. Nicer, but many production/client sites reject the
+  //     http://127.0.0.1 success_url (WP requires a secure or loopback URL, and
+  //     security plugins often block it). If it's rejected the browser shows the
+  //     error while the CLI waits — so it's opt-in, not the default.
+  const auto = process.argv.includes("--auto");
+
   let cred: AuthResult;
   try {
-    cred = await authorizeApplicationPassword(siteUrl);
+    cred = auto ? await authorizeApplicationPassword(siteUrl) : await manualAuthorize(siteUrl);
   } catch (err) {
-    log(`\n✗ ${(err as Error).message}`);
-    log("  Tip: the site must be WordPress 5.6+ with Application Passwords enabled");
-    log("  (on by default over HTTPS).");
-    return 1;
+    if (auto) {
+      log(`\n⚠️  Automatic authorization didn't complete: ${(err as Error).message}`);
+      log("   Falling back to manual approval…");
+      try {
+        cred = await manualAuthorize(siteUrl);
+      } catch (err2) {
+        log(`\n✗ ${(err2 as Error).message}`);
+        return 1;
+      }
+    } else {
+      log(`\n✗ ${(err as Error).message}`);
+      return 1;
+    }
   }
 
   const registryPath = defaultRegistryPath();

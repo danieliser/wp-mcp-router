@@ -36,9 +36,15 @@ Want to check everything? `npx wp-mcp-router --doctor`.
 
 > The credential comes from WordPress core's built-in **Application Passwords authorization
 > flow** (WP 5.6+, on by default over HTTPS) — the same "approve in your browser" UX as OAuth,
-> no plugin required. The password is scoped to this app, revocable from your profile, and never
-> touches your clipboard. Scope it tighter by approving as a limited-role user (e.g. an
-> "admin-minus" account — see [jarvis-agent-role](https://github.com/code-atlantic/jarvis-agent-role)).
+> no plugin required. You approve in the browser, WordPress shows a scoped, revocable
+> application password, and you paste it back once. Scope it tighter by approving as a
+> limited-role user (e.g. an "admin-minus" account — see
+> [jarvis-agent-role](https://github.com/code-atlantic/jarvis-agent-role)).
+>
+> Prefer not to copy/paste? `add-site --auto` catches the password via a localhost callback
+> instead — but many production/managed sites reject the `http://127.0.0.1` callback (WordPress
+> requires a secure or loopback URL, and security plugins often block it), so paste is the
+> default because it works everywhere.
 
 Each target site also needs the [`mcp-adapter`](https://github.com/WordPress/mcp-adapter) plugin
 active (it registers the `/wp-json/mcp/…` endpoint the router talks to).
