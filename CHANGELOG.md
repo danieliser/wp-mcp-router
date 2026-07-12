@@ -1,19 +1,26 @@
 # Changelog
 
+## 0.2.0 — Zero-friction onboarding
+
+Adds a browser-based setup flow so connecting a site takes two commands and no
+manual credential handling.
+
+- `wp-mcp-router add-site [url]` — connect a site via WordPress core's Application
+  Passwords authorization flow: opens the browser, the user clicks "Approve", and the
+  minted credential is caught on a localhost callback, written to the registry (0600),
+  and verified against the live MCP endpoint. No manual credential copying.
+- `wp-mcp-router install [client]` — auto-detect and inject the server into Claude
+  Desktop / Claude Code / Cursor config (merges, backs up to `.bak`, never clobbers).
+- `wp-mcp-router setup` — guided one-shot wizard chaining both.
+- `--help` with full usage; a "run setup" nudge when started with no config.
+- Audit log file/dir hardened to `0600`/`0700` with a one-time `FULL`-mode warning.
+
+Node built-ins only — no new dependencies.
+
 ## 0.1.0 — Initial public release
 
 First public release. Multi-site WordPress MCP router: one MCP connection for a
 fleet of `mcp-adapter` (Abilities API) sites.
-
-### Onboarding (zero-friction)
-
-- `wp-mcp-router add-site [url]` — connect a site via WordPress core's Application
-  Passwords authorization flow: opens the browser, the user clicks "Approve", and the
-  minted credential is caught on a localhost callback, written to the registry, and
-  verified against the live MCP endpoint. No manual credential copying.
-- `wp-mcp-router install [client]` — auto-detect and inject the server into Claude
-  Desktop / Claude Code / Cursor config (merges, backs up, never clobbers).
-- `wp-mcp-router setup` — guided one-shot wizard chaining both.
 
 ### Tools
 
