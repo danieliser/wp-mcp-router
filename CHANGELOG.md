@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — Consistent tool naming
+
+- **Breaking:** renamed `fleet_list_sites` → `wp_list_sites`,
+  `fleet_search_abilities` → `wp_search_abilities`, and
+  `fleet_get_ability` → `wp_get_ability`.
+- This aligns every tool under the `wp_` prefix after the `wp-fleet` →
+  `wp-mcp-router` package rename.
+
 ## 0.2.2 — add-site prompt + npx-aware suggestions
 
 - The credential prompt no longer claims the login is shown on the WordPress

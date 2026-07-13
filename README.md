@@ -99,9 +99,9 @@ wp-mcp-router makes capabilities first-class:
 
 | Tool | Purpose |
 | --- | --- |
-| `fleet_list_sites` | Sites + tags + ability counts + namespace groups. The map. |
-| `fleet_search_abilities` | Keyword search across sites; results grouped by site. |
-| `fleet_get_ability` | Input/output schema for one ability on one site. |
+| `wp_list_sites` | Sites + tags + ability counts + namespace groups. The map. |
+| `wp_search_abilities` | Keyword search across sites; results grouped by site. |
+| `wp_get_ability` | Input/output schema for one ability on one site. |
 | `wp_run` | Execute an ability on **one** site (guarded). |
 | `wp_run_across` | Execute the same ability on **many** sites in parallel (fan-out). |
 | `wp_get_content_by_url` | Resolve a URL/path → post (id, type, title, status), optionally with full content. One step instead of list-and-filter. |

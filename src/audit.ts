@@ -86,7 +86,7 @@ function redact(value: unknown, depth = 0): unknown {
 }
 
 export interface AuditEntry {
-  /** Tool the agent invoked (fleet_list_sites, wp_run, …). */
+  /** Tool the agent invoked (wp_list_sites, wp_run, …). */
   tool: string;
   /** Target site id, when the call is site-scoped. */
   site?: string;

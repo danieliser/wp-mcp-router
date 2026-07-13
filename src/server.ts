@@ -8,9 +8,9 @@
  * wrong-site call into a helpful redirect instead of an opaque remote error.
  *
  * Tools:
- *   fleet_list_sites        — sites + tags + ability counts (the map)
- *   fleet_search_abilities  — search abilities across sites (per-site results)
- *   fleet_get_ability       — input/output schema for one ability on one site
+ *   wp_list_sites           — sites + tags + ability counts (the map)
+ *   wp_search_abilities     — search abilities across sites (per-site results)
+ *   wp_get_ability          — input/output schema for one ability on one site
  *   wp_run                  — execute an ability on ONE site (guarded)
  *   wp_run_across           — execute the SAME ability on MANY sites (fan-out)
  *   wp_get_content_by_url   — resolve a URL/path to its post (+optional content)
@@ -83,9 +83,9 @@ export function buildServer(config: FleetConfig): Server {
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: [
       {
-        name: "fleet_list_sites",
+        name: "wp_list_sites",
         description:
-          "TIER 1 discovery — the fleet map. Returns each site's id, label, tags, ability count, and namespace GROUPS (e.g. 'popup-maker', 'fluent-crm'). Deliberately compact: no ability names, no schemas. Call this first to see which site is likely to have what you need, then use fleet_search_abilities to drill in.",
+          "TIER 1 discovery — the fleet map. Returns each site's id, label, tags, ability count, and namespace GROUPS (e.g. 'popup-maker', 'fluent-crm'). Deliberately compact: no ability names, no schemas. Call this first to see which site is likely to have what you need, then use wp_search_abilities to drill in.",
         inputSchema: {
           type: "object",
           properties: {
@@ -94,19 +94,19 @@ export function buildServer(config: FleetConfig): Server {
         },
       },
       {
-        name: "fleet_search_abilities",
+        name: "wp_search_abilities",
         description:
-          "TIER 2 discovery — drill into abilities. Keyword search across sites' ability catalogs (matches name, description, or namespace). Returns matches grouped by site with names + descriptions but NOT full schemas. Empty query lists everything for the specified sites. Use fleet_get_ability for a specific ability's full schema.",
+          "TIER 2 discovery — drill into abilities. Keyword search across sites' ability catalogs (matches name, description, or namespace). Returns matches grouped by site with names + descriptions but NOT full schemas. Empty query lists everything for the specified sites. Use wp_get_ability for a specific ability's full schema.",
         inputSchema: {
           type: "object",
           properties: {
             query: { type: "string", description: "Keyword, e.g. 'popup', 'contact', 'create'. Empty = list all." },
-            sites: { type: "array", items: { type: "string" }, description: "Limit to these site ids (default: all). Narrow with fleet_list_sites first for large fleets." },
+            sites: { type: "array", items: { type: "string" }, description: "Limit to these site ids (default: all). Narrow with wp_list_sites first for large fleets." },
           },
         },
       },
       {
-        name: "fleet_get_ability",
+        name: "wp_get_ability",
         description:
           "TIER 3 discovery — the full input/output schema and description for one ability on one site. Call this before wp_run when you need to know the exact parameters. Result is cached per (site, ability) with the same TTL as the site catalog.",
         inputSchema: {
@@ -127,7 +127,7 @@ export function buildServer(config: FleetConfig): Server {
           properties: {
             site: siteEnum,
             ability_name: { type: "string", description: "Full ability name, e.g. 'core/get-site-info'." },
-            arguments: { type: "object", description: "Arguments object for the ability (see fleet_get_ability)." },
+            arguments: { type: "object", description: "Arguments object for the ability (see wp_get_ability)." },
             compact: {
               type: "boolean",
               description:
@@ -211,7 +211,7 @@ export function buildServer(config: FleetConfig): Server {
 
     async function handleTool(): Promise<any> {
       switch (name) {
-        case "fleet_list_sites": {
+        case "wp_list_sites": {
           const refresh = args.refresh === true;
           const rows = await Promise.all(
             config.sites.map(async (s) => {
@@ -232,11 +232,11 @@ export function buildServer(config: FleetConfig): Server {
           return ok({
             default_site: config.defaultSite,
             sites: rows,
-            hint: "Use fleet_search_abilities({sites:['<id>']}) to see abilities on a specific site, or fleet_search_abilities({query:'…'}) to search across the fleet.",
+            hint: "Use wp_search_abilities({sites:['<id>']}) to see abilities on a specific site, or wp_search_abilities({query:'…'}) to search across the fleet.",
           });
         }
 
-        case "fleet_search_abilities": {
+        case "wp_search_abilities": {
           const query = typeof args.query === "string" ? args.query : "";
           const sites = Array.isArray(args.sites) ? (args.sites as string[]) : undefined;
           const results = await catalog.search(query, sites);
@@ -251,7 +251,7 @@ export function buildServer(config: FleetConfig): Server {
           });
         }
 
-        case "fleet_get_ability": {
+        case "wp_get_ability": {
           const site = resolveSite(args.site);
           if ("error" in site) return fail(site.error);
           const abilityName = String(args.ability_name ?? "");
@@ -272,8 +272,8 @@ export function buildServer(config: FleetConfig): Server {
               available_on: check.alsoOn,
               hint:
                 check.alsoOn.length > 0
-                  ? `Re-run with site="${check.alsoOn[0]}", or use fleet_search_abilities to find the right site.`
-                  : "No site in the fleet exposes this ability. Check the name with fleet_search_abilities.",
+                  ? `Re-run with site="${check.alsoOn[0]}", or use wp_search_abilities to find the right site.`
+                  : "No site in the fleet exposes this ability. Check the name with wp_search_abilities.",
             });
           }
 
@@ -346,7 +346,7 @@ export function buildServer(config: FleetConfig): Server {
             return fail(`Site "${site.id}" has no URL-resolver ability.`, {
               needed: RESOLVE_URL_ABILITY,
               available_on: alsoOn,
-              hint: "Install/activate gk-block-mcp on this site, or use fleet_search_abilities to find a site that can resolve URLs.",
+              hint: "Install/activate gk-block-mcp on this site, or use wp_search_abilities to find a site that can resolve URLs.",
             });
           }
 
