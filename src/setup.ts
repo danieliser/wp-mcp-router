@@ -40,6 +40,17 @@ function log(msg = ""): void {
   process.stderr.write(msg + "\n");
 }
 
+/**
+ * How the user invoked us, so suggested commands are copy-paste runnable.
+ * `npx` sets npm_command=exec; a globally-installed bin or `node dist/index.js`
+ * does not. When run via npx we prefix suggestions with `npx `.
+ */
+export function selfCmd(rest = ""): string {
+  const viaNpx = process.env.npm_command === "exec" || !!process.env.npm_execpath;
+  const base = viaNpx ? "npx wp-mcp-router" : "wp-mcp-router";
+  return rest ? `${base} ${rest}` : base;
+}
+
 /** Open a URL in the user's default browser, cross-platform, no dependency. */
 function openBrowser(url: string): void {
   const cmd =
@@ -222,18 +233,29 @@ async function manualAuthorize(siteUrl: string): Promise<AuthResult> {
     `&app_id=${randomUUID()}`;
 
   log();
-  log("Opening the WordPress authorization page. Approve, then WordPress will");
-  log("SHOW you an application password. Copy it and paste it here.");
+  log('Opening the WordPress "Authorize Application" page…');
+  log('  1. Log in if prompted, then click "Yes, I approve of this connection".');
+  log("  2. WordPress shows a generated application password — copy it.");
+  log("  3. Paste it below.");
   log();
   log("If your browser didn't open, visit this URL manually:");
   log(`  ${authorizeUrl}`);
   log();
   openBrowser(authorizeUrl);
 
-  const username = await prompt("WordPress username shown on the approval page: ");
-  const password = await prompt("Application password (paste it, spaces are fine): ");
+  // The approval screen does NOT show which login the password belongs to — it
+  // only shows the app name and the password. So we ask. It's the username OR
+  // email you sign in with; if unsure, it's on Users → Profile (the "Username"
+  // field). The top-right "Howdy, <name>" is a display name, not the login.
+  const username = await prompt(
+    "Your WordPress login — the username or email you sign in with\n" +
+      "(if unsure, see the Username field on Users → Profile): ",
+  );
+  const password = await prompt(
+    "Application password from the approval page (paste it — spaces are fine): ",
+  );
   if (!username.trim() || !password.trim()) {
-    throw new Error("Username and application password are both required.");
+    throw new Error("Login and application password are both required.");
   }
   return { user_login: username.trim(), password: password.trim() };
 }
@@ -339,8 +361,8 @@ export async function addSite(argUrl?: string): Promise<number> {
     log("   The site may need the `mcp-adapter` plugin. Credentials are stored regardless.");
   }
 
-  log(`\nDone. Run \`wp-mcp-router --doctor\` to see everything, or`);
-  log(`\`wp-mcp-router install\` to wire it into Claude / Cursor.`);
+  log(`\nDone. Run  ${selfCmd("--doctor")}  to see everything, or`);
+  log(`${selfCmd("install")}  to wire it into Claude / Cursor / Codex.`);
   return 0;
 }
 
@@ -417,7 +439,7 @@ export async function install(which?: string): Promise<number> {
     log(
       which
         ? `No known client matches "${which}". Options: Claude Desktop, Claude Code, Cursor, Codex.`
-        : "No MCP client config found. Pass one explicitly: wp-mcp-router install \"Claude Desktop\"",
+        : `No MCP client config found. Pass one explicitly: ${selfCmd('install "Claude Desktop"')}`,
     );
     // Still print a copy-paste snippet so the user isn't stuck.
     printManualSnippet(registryPath, entry);
@@ -519,8 +541,8 @@ function printManualSnippet(registryPath: string, entry: Record<string, unknown>
 export async function setup(): Promise<number> {
   log("wp-mcp-router setup");
   log("──────────────────");
-  log("This links a WordPress site to your AI client in two steps: approve in the");
-  log("browser, then wire it in. No manual credential copying.\n");
+  log("Links a WordPress site to your AI client in two steps: approve the");
+  log("connection in your browser, then wire it in.\n");
 
   const code = await addSite();
   if (code !== 0) return code;

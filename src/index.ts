@@ -16,7 +16,7 @@ import { loadConfig } from "./config.js";
 import { buildServer } from "./server.js";
 import { Catalog } from "./catalog.js";
 import { auditStatus } from "./audit.js";
-import { addSite, install, setup } from "./setup.js";
+import { addSite, install, setup, selfCmd } from "./setup.js";
 
 const HELP = `wp-mcp-router — one MCP connection for a fleet of WordPress sites
 
@@ -96,7 +96,7 @@ async function main() {
     config = loadConfig().config;
   } catch (err) {
     process.stderr.write(`wp-mcp-router: ${(err as Error).message}\n`);
-    process.stderr.write(`\nNo sites configured yet. Run:  wp-mcp-router setup\n`);
+    process.stderr.write(`\nNo sites configured yet. Run:  ${selfCmd("setup")}\n`);
     process.exit(1);
   }
 

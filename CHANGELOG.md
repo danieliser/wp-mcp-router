@@ -2,6 +2,11 @@
 
 ## 0.2.1 — add-site: manual paste by default; clearer flow
 
+- add-site UX fixes from real-world use: the credential prompt no longer claims
+  the login is shown on the WordPress approval page (it isn't — WP shows only the
+  app name + password); it now asks for the username-or-email you sign in with and
+  points to Users → Profile. Suggested follow-up commands are prefixed with `npx `
+  when the tool was launched via npx, so they're copy-paste runnable.
 - `install` now also targets **Codex** (`~/.codex/config.toml`) in addition to
   Claude Desktop / Claude Code / Cursor. Codex config is TOML: the block is
   appended if absent (existing servers preserved, `.bak` written), and left
