@@ -17,16 +17,22 @@ site that doesn't have it returns *"not on B; available on A and C"* instead of 
 ## Quick start
 
 ```bash
-# 1. Connect a WordPress site. Opens your browser; you approve, WordPress
-#    mints a scoped application password, you paste it back once.
-npx wp-mcp-router add-site example.com
-
-# 2. Wire it into your AI client (auto-detects Claude Desktop / Claude Code / Cursor / Codex).
-npx wp-mcp-router install
+npx wp-mcp-router setup
 ```
 
-Restart your client and you're connected. Add more sites any time with `add-site` — they all
-live behind the one connection. `npx wp-mcp-router setup` runs both steps as a guided wizard;
+The wizard connects your first site (opens your browser; you approve, WordPress mints a
+scoped application password, you paste it back once) and wires the server into your AI
+client (auto-detects Claude Desktop / Claude Code / Cursor / Codex). Restart your client
+and you're connected.
+
+Prefer the steps individually?
+
+```bash
+npx wp-mcp-router add-site example.com   # connect a site (repeat per site)
+npx wp-mcp-router install                # add to your AI client's config
+```
+
+Add more sites any time with `add-site` — they all live behind the one connection.
 `npx wp-mcp-router --doctor` checks connectivity and lists abilities per site.
 
 Each target site needs the [`mcp-adapter`](https://github.com/WordPress/mcp-adapter) plugin

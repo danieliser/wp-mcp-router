@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3 — docs: setup wizard is the front door
+
+- Quick start now leads with `npx wp-mcp-router setup` (the guided wizard);
+  `add-site` + `install` documented as the step-by-step alternative. No code changes.
+
 ## 0.3.2 — platform-native paths + consistent registry resolution
 
 - **Audit log moved** to the per-user state dir: `~/.local/state/wp-mcp-router/audit.jsonl`
