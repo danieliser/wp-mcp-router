@@ -31,6 +31,7 @@ import { dirname, join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { DEFAULT_MCP_PATH, type SiteConfig } from "./config.js";
 import { userConfigDir } from "./paths.js";
+import { COMPANION_BLOCK_MCP, REQUIRED_PLUGIN, ensurePlugin, type EnsureIo } from "./adapter.js";
 import { WpClient } from "./wp-client.js";
 
 const APP_NAME = "wp-mcp-router";
@@ -62,6 +63,20 @@ function openBrowser(url: string): void {
   } catch {
     /* fall through — the URL is also printed for manual open. */
   }
+}
+
+/** Interactive EnsureIo backed by the CLI prompt + browser helpers. */
+export function ensureIo(): EnsureIo {
+  return {
+    log,
+    confirm: async (question, def) => {
+      if (!process.stdin.isTTY) return false;
+      const ans = (await prompt(`${question} ${def ? "[Y/n]" : "[y/N]"} `)).toLowerCase();
+      if (!ans) return def;
+      return ans.startsWith("y");
+    },
+    openUrl: openBrowser,
+  };
 }
 
 async function prompt(question: string): Promise<string> {
@@ -347,28 +362,49 @@ export async function addSite(argUrl?: string): Promise<number> {
 
   // Verify against the live endpoint so the user knows it actually works.
   log("Verifying the connection…");
-  const client = new WpClient(
-    {
-      id,
-      url: siteUrl,
-      endpoint: siteUrl + DEFAULT_MCP_PATH,
-      username: cred.user_login,
-      appPassword: cred.password,
-    } as SiteConfig,
-    30_000,
-    25_000,
-  );
-  try {
-    await client.call("initialize", {
+  const verify = async (): Promise<boolean> => {
+    const c = new WpClient(
+      {
+        id,
+        url: siteUrl,
+        endpoint: siteUrl + DEFAULT_MCP_PATH,
+        username: cred.user_login,
+        appPassword: cred.password,
+      } as SiteConfig,
+      30_000,
+      25_000,
+    );
+    await c.call("initialize", {
       protocolVersion: "2025-06-18",
       capabilities: {},
       clientInfo: { name: APP_NAME, version: "0.1.0" },
     });
+    return true;
+  };
+
+  try {
+    await verify();
     log(`✓ ${siteUrl} is reachable and speaking MCP.`);
   } catch (err) {
-    log(`⚠️  Saved, but the MCP endpoint check failed: ${(err as Error).message}`);
-    log("   The site may need the `mcp-adapter` plugin. Credentials are stored regardless.");
+    log(`⚠️  MCP endpoint check failed: ${(err as Error).message}`);
+    // Most common cause: mcp-adapter missing or inactive. We have an
+    // authorized credential now, so try to fix it over the plugins API.
+    const ok = await ensurePlugin(siteUrl, cred.user_login, cred.password, REQUIRED_PLUGIN, ensureIo());
+    if (ok) {
+      try {
+        await verify();
+        log(`✓ ${siteUrl} is reachable and speaking MCP.`);
+      } catch (err2) {
+        log(`⚠️  Still failing after activation: ${(err2 as Error).message}`);
+        log("   Credentials are stored regardless — re-run add-site once resolved.");
+      }
+    } else {
+      log("   Credentials are stored regardless — re-run add-site after installing mcp-adapter.");
+    }
   }
+
+  // Recommended companion: content abilities the router can actually call.
+  await ensurePlugin(siteUrl, cred.user_login, cred.password, COMPANION_BLOCK_MCP, ensureIo());
 
   log(`\nDone. Run  ${selfCmd("--doctor")}  to see everything, or`);
   log(`${selfCmd("install")}  to wire it into Claude / Cursor / Codex.`);

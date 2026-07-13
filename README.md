@@ -36,7 +36,12 @@ Add more sites any time with `add-site` — they all live behind the one connect
 `npx wp-mcp-router --doctor` checks connectivity and lists abilities per site.
 
 Each target site needs the [`mcp-adapter`](https://github.com/WordPress/mcp-adapter) plugin
-active (it registers the `/wp-json/mcp/…` endpoint the router talks to).
+active (it registers the `/wp-json/mcp/…` endpoint the router talks to). `add-site` and
+`--doctor` check for it: if it's installed but inactive they offer to activate it, and if
+it's missing they walk you through the one-time install (this requires connecting as a user
+who can manage plugins). `add-site` also offers
+[Block MCP](https://github.com/danieliser/block-mcp/releases/latest), a recommended companion
+that registers content abilities (posts, blocks, media, terms) for the router to call.
 
 ## Tools
 

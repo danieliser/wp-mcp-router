@@ -16,7 +16,8 @@ import { loadConfig } from "./config.js";
 import { buildServer } from "./server.js";
 import { Catalog } from "./catalog.js";
 import { auditStatus } from "./audit.js";
-import { addSite, install, setup, selfCmd } from "./setup.js";
+import { addSite, install, setup, selfCmd, ensureIo } from "./setup.js";
+import { REQUIRED_PLUGIN, ensurePlugin, probePlugin } from "./adapter.js";
 
 const HELP = `wp-mcp-router — one MCP connection for a fleet of WordPress sites
 
@@ -53,6 +54,24 @@ async function runDoctor(): Promise<number> {
       if (cat.error) {
         failures++;
         process.stderr.write(`    ✗ ${cat.error}\n`);
+        // The usual culprit: mcp-adapter missing or inactive. Diagnose —
+        // and when the terminal is interactive, offer to fix it in place.
+        if (site.username && site.appPassword) {
+          const probe = await probePlugin(site.url, site.username, site.appPassword, REQUIRED_PLUGIN.slug);
+          if (probe.status === "inactive" || probe.status === "missing") {
+            process.stderr.write(`    ↳ mcp-adapter is ${probe.status} on this site.\n`);
+            const fixed = await ensurePlugin(site.url, site.username, site.appPassword, REQUIRED_PLUGIN, ensureIo());
+            if (fixed) {
+              const retry = await catalog.getCatalog(site.id, true);
+              if (!retry.error) {
+                failures--;
+                process.stderr.write(`    ✓ fixed — ${retry.abilities.length} abilities now visible.\n`);
+              }
+            }
+          } else if (probe.status === "unknown" && probe.reason) {
+            process.stderr.write(`    ↳ couldn't check plugins: ${probe.reason}\n`);
+          }
+        }
       } else {
         const groups = [...new Set(cat.abilities.map((a) => a.group).filter(Boolean))];
         process.stderr.write(`    ✓ ${cat.abilities.length} abilities — groups: ${groups.join(", ") || "(none)"}\n`);

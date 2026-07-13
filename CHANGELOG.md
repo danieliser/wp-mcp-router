@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0 — required-plugin detection and guided install
+
+- `add-site` now verifies the MCP endpoint and, on failure, diagnoses the usual
+  cause: it checks the site's plugins over the REST API, offers to **activate**
+  `mcp-adapter` if it's installed but inactive, attempts a WordPress.org install
+  when possible, and otherwise walks you through the one-time manual upload
+  (opening the download + upload pages in your browser). Re-verifies after fixing.
+- `--doctor` does the same diagnosis for every failing site and can fix it
+  interactively.
+- `add-site` also offers the recommended **Block MCP** companion plugin, which
+  registers content abilities (posts, blocks, media, terms) for the router to call.
+- Requires connecting as a user who can manage plugins; limited-role users get a
+  clear "needs an administrator" note instead of a silent failure.
+
 ## 0.3.3 — docs: setup wizard is the front door
 
 - Quick start now leads with `npx wp-mcp-router setup` (the guided wizard);
