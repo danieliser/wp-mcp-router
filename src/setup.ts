@@ -262,13 +262,16 @@ export async function addSite(argUrl?: string): Promise<number> {
 
   // Two paths to the same credential:
   //   • Manual (default) — WordPress shows the password after you approve, and
-  //     you paste it here. Works on EVERY site: no localhost callback, so
-  //     nothing for a security plugin or a strict success_url check to reject.
+  //     you paste it here. Zero assumptions about the site; the paste always
+  //     works, and it's a natural place to drop in a password created any other
+  //     way (Users → Profile → Application Passwords) too.
   //   • Automatic (--auto) — a localhost callback catches the password so you
-  //     don't paste anything. Nicer, but many production/client sites reject the
-  //     http://127.0.0.1 success_url (WP requires a secure or loopback URL, and
-  //     security plugins often block it). If it's rejected the browser shows the
-  //     error while the CLI waits — so it's opt-in, not the default.
+  //     don't paste anything. The http://127.0.0.1 success_url IS spec-valid
+  //     (WP allows the 127.0.0.1 / [::1] loopback host over http; `localhost` is
+  //     NOT allowed), and needs no public IP — the site just redirects *your*
+  //     browser to *your* machine. It fails only if the site's own is_ssl() is
+  //     false (e.g. a reverse proxy hides HTTPS from WordPress), in which case
+  //     the authorize page errors regardless — so paste is the safe default.
   const auto = process.argv.includes("--auto");
 
   let cred: AuthResult;
@@ -346,6 +349,8 @@ export async function addSite(argUrl?: string): Promise<number> {
 interface ClientTarget {
   name: string;
   path: string;
+  /** Config file format. Claude/Cursor use JSON; Codex uses TOML. */
+  format: "json" | "toml";
 }
 
 /** Known MCP-client config locations per platform. */
@@ -359,24 +364,30 @@ function clientTargets(): ClientTarget[] {
     targets.push({
       name: "Claude Desktop",
       path: join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json"),
+      format: "json",
     });
   } else if (p === "win32") {
     targets.push({
       name: "Claude Desktop",
       path: join(process.env.APPDATA ?? join(home, "AppData", "Roaming"), "Claude", "claude_desktop_config.json"),
+      format: "json",
     });
   } else {
     targets.push({
       name: "Claude Desktop",
       path: join(home, ".config", "Claude", "claude_desktop_config.json"),
+      format: "json",
     });
   }
 
   // Claude Code (project-agnostic user config)
-  targets.push({ name: "Claude Code", path: join(home, ".claude.json") });
+  targets.push({ name: "Claude Code", path: join(home, ".claude.json"), format: "json" });
 
   // Cursor
-  targets.push({ name: "Cursor", path: join(home, ".cursor", "mcp.json") });
+  targets.push({ name: "Cursor", path: join(home, ".cursor", "mcp.json"), format: "json" });
+
+  // Codex CLI (~/.codex/config.toml, TOML format)
+  targets.push({ name: "Codex", path: join(home, ".codex", "config.toml"), format: "toml" });
 
   return targets;
 }
@@ -405,7 +416,7 @@ export async function install(which?: string): Promise<number> {
   if (targets.length === 0) {
     log(
       which
-        ? `No known client matches "${which}". Options: Claude Desktop, Claude Code, Cursor.`
+        ? `No known client matches "${which}". Options: Claude Desktop, Claude Code, Cursor, Codex.`
         : "No MCP client config found. Pass one explicitly: wp-mcp-router install \"Claude Desktop\"",
     );
     // Still print a copy-paste snippet so the user isn't stuck.
@@ -416,23 +427,10 @@ export async function install(which?: string): Promise<number> {
   let wrote = 0;
   for (const t of targets) {
     try {
-      let cfg: any = {};
-      if (existsSync(t.path)) {
-        cfg = JSON.parse(readFileSync(t.path, "utf8") || "{}");
-      } else {
-        mkdirSync(dirname(t.path), { recursive: true });
-      }
-      cfg.mcpServers = cfg.mcpServers ?? {};
-      const existed = !!cfg.mcpServers["wp-mcp-router"];
-      cfg.mcpServers["wp-mcp-router"] = entry;
-
-      // Back up before overwriting an existing config.
-      if (existsSync(t.path)) {
-        writeFileSync(t.path + ".bak", readFileSync(t.path));
-      }
-      writeFileSync(t.path, JSON.stringify(cfg, null, 2) + "\n", "utf8");
-      log(`✓ ${existed ? "Updated" : "Added"} wp-mcp-router in ${t.name} (${t.path})`);
-      wrote++;
+      const done = t.format === "toml"
+        ? installToml(t, registryPath)
+        : installJson(t, entry);
+      if (done) wrote++;
     } catch (err) {
       log(`✗ ${t.name}: ${(err as Error).message}`);
     }
@@ -444,9 +442,71 @@ export async function install(which?: string): Promise<number> {
   return wrote > 0 ? 0 : 1;
 }
 
+/** Merge the server entry into a JSON MCP-client config (Claude / Cursor). */
+function installJson(t: ClientTarget, entry: Record<string, unknown>): boolean {
+  let cfg: any = {};
+  if (existsSync(t.path)) {
+    cfg = JSON.parse(readFileSync(t.path, "utf8") || "{}");
+  } else {
+    mkdirSync(dirname(t.path), { recursive: true });
+  }
+  cfg.mcpServers = cfg.mcpServers ?? {};
+  const existed = !!cfg.mcpServers["wp-mcp-router"];
+  cfg.mcpServers["wp-mcp-router"] = entry;
+
+  if (existsSync(t.path)) writeFileSync(t.path + ".bak", readFileSync(t.path));
+  writeFileSync(t.path, JSON.stringify(cfg, null, 2) + "\n", "utf8");
+  log(`✓ ${existed ? "Updated" : "Added"} wp-mcp-router in ${t.name} (${t.path})`);
+  return true;
+}
+
+/**
+ * Add the server block to a TOML config (Codex). We don't ship a TOML parser
+ * (zero-dep), so rather than risk a surgical rewrite we APPEND the block when
+ * it's absent, and refuse (with a printed snippet) when it's already present —
+ * safer than corrupting a hand-tuned config.tomL.
+ */
+function installToml(t: ClientTarget, registryPath: string): boolean {
+  const block = tomlBlock(registryPath);
+  const exists = existsSync(t.path);
+  const current = exists ? readFileSync(t.path, "utf8") : "";
+
+  if (/^\s*\[mcp_servers\.wp-mcp-router\]/m.test(current)) {
+    log(`• ${t.name} already has [mcp_servers.wp-mcp-router] — leaving it untouched.`);
+    log(`  To change it, edit ${t.path}. Desired block:\n`);
+    log(block);
+    return false;
+  }
+
+  if (!exists) mkdirSync(dirname(t.path), { recursive: true });
+  else writeFileSync(t.path + ".bak", current);
+
+  const sep = current && !current.endsWith("\n") ? "\n\n" : current ? "\n" : "";
+  writeFileSync(t.path, current + sep + block + "\n", "utf8");
+  log(`✓ Added wp-mcp-router in ${t.name} (${t.path})`);
+  return true;
+}
+
+/** The Codex/TOML form of the server entry. */
+function tomlBlock(registryPath: string): string {
+  // Basic-string escaping for the path (backslashes on Windows, quotes).
+  const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return [
+    `[mcp_servers.wp-mcp-router]`,
+    `command = "npx"`,
+    `args = ["-y", "wp-mcp-router@latest"]`,
+    ``,
+    `[mcp_servers.wp-mcp-router.env]`,
+    `WP_MCP_ROUTER_CONFIG = "${esc(registryPath)}"`,
+  ].join("\n");
+}
+
 function printManualSnippet(registryPath: string, entry: Record<string, unknown>): void {
-  log("\nAdd this to your MCP client's config under \"mcpServers\":\n");
+  log("\nAdd this to your MCP client's config.\n");
+  log("JSON clients (Claude Desktop / Claude Code / Cursor) — under \"mcpServers\":");
   log(JSON.stringify({ "wp-mcp-router": entry }, null, 2));
+  log("\nCodex (~/.codex/config.toml):");
+  log(tomlBlock(registryPath));
   log(`\n(registry: ${registryPath})`);
 }
 

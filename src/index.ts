@@ -31,7 +31,7 @@ Usage:
                                  localhost callback instead (nicer, but many
                                  production sites reject the loopback URL).
   wp-mcp-router install [client] Add wp-mcp-router to an MCP client's config
-                                 (Claude Desktop | Claude Code | Cursor).
+                                 (Claude Desktop | Claude Code | Cursor | Codex).
   wp-mcp-router --doctor         Check connectivity + list abilities per site.
   wp-mcp-router --help           This message.
 

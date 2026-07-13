@@ -24,7 +24,7 @@ Two commands. No hunting through wp-admin for credentials, no editing JSON by ha
 #    WordPress mints a scoped, revocable application password for you.
 npx wp-mcp-router add-site example.com
 
-# 2. Wire it into your AI client (auto-detects Claude Desktop / Claude Code / Cursor).
+# 2. Wire it into your AI client (auto-detects Claude Desktop / Claude Code / Cursor / Codex).
 npx wp-mcp-router install
 ```
 
@@ -41,10 +41,17 @@ Want to check everything? `npx wp-mcp-router --doctor`.
 > limited-role user (e.g. an "admin-minus" account — see
 > [jarvis-agent-role](https://github.com/code-atlantic/jarvis-agent-role)).
 >
-> Prefer not to copy/paste? `add-site --auto` catches the password via a localhost callback
-> instead — but many production/managed sites reject the `http://127.0.0.1` callback (WordPress
-> requires a secure or loopback URL, and security plugins often block it), so paste is the
-> default because it works everywhere.
+> Prefer not to copy/paste? `add-site --auto` catches the password via a `http://127.0.0.1`
+> localhost callback (spec-valid — WP allows the loopback host over http; no public IP needed,
+> since the site only redirects *your* browser to *your* machine). Paste is the default because
+> it makes no assumptions about the site.
+>
+> **Hitting "The URL must be served over a secure connection"?** That's a *site-side* check —
+> WordPress's `authorize-application.php` requires `is_ssl()` to be true, and behind a reverse
+> proxy / CDN that terminates TLS, `is_ssl()` can be false even though your browser shows HTTPS.
+> Trust the forwarded protocol in `wp-config.php`
+> (`if ( ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https' ) $_SERVER['HTTPS'] = 'on';`),
+> or create the password manually under **Users → Profile → Application Passwords** and paste it.
 
 Each target site also needs the [`mcp-adapter`](https://github.com/WordPress/mcp-adapter) plugin
 active (it registers the `/wp-json/mcp/…` endpoint the router talks to).

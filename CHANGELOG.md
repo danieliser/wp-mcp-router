@@ -1,18 +1,39 @@
 # Changelog
 
-## 0.2.1 — Robust add-site (manual paste by default)
+## 0.2.1 — add-site: manual paste by default; clearer flow
 
-Fixes `add-site` failing on production / managed WordPress sites.
+- `install` now also targets **Codex** (`~/.codex/config.toml`) in addition to
+  Claude Desktop / Claude Code / Cursor. Codex config is TOML: the block is
+  appended if absent (existing servers preserved, `.bak` written), and left
+  untouched if `[mcp_servers.wp-mcp-router]` already exists.
+- `add-site` now uses the **manual paste** flow by default: approve in the
+  browser, WordPress shows the application password, you paste it back. The
+  localhost-callback flow is opt-in via `add-site --auto` (and falls back to
+  paste if the callback isn't received).
+- The `--auto` callback uses `http://127.0.0.1:<port>`, which IS a valid
+  WordPress authorize `success_url` (WP core allows the `127.0.0.1` / `[::1]`
+  loopback host over http regardless of environment; `localhost` is NOT allowed
+  and is rejected). So `--auto` works on standard sites — no public IP needed;
+  the site only redirects *your* browser to *your* machine's callback.
 
-- `add-site` now uses the **manual paste** flow by default: you approve in the
-  browser, WordPress shows the application password, you paste it back. This
-  works on every site — no localhost callback for a security plugin or a strict
-  success_url check to reject.
-- The previous localhost-callback flow is now opt-in via `add-site --auto`
-  (and auto-falls-back to manual if the callback is rejected). Root cause: WP
-  requires the authorize `success_url` to be HTTPS or a bare loopback host, and
-  many production sites / security plugins reject `http://127.0.0.1:<port>`,
-  leaving the CLI waiting while the browser shows the error.
+### Note: "The URL must be served over a secure connection"
+
+WordPress uses this same error for a *site-level* check too:
+`authorize-application.php` requires `is_ssl()` to be true. Behind a reverse
+proxy / CDN that terminates TLS and forwards plain HTTP to the origin (common
+on managed hosts), `is_ssl()` can be **false** even though your browser shows
+HTTPS — and the authorize page then errors regardless of the callback URL. Fix
+it on the WordPress side by trusting the forwarded protocol, e.g. in
+`wp-config.php`:
+
+```php
+if ( isset( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) && 'https' === $_SERVER['HTTP_X_FORWARDED_PROTO'] ) {
+    $_SERVER['HTTPS'] = 'on';
+}
+```
+
+Or create the application password manually (Users → Profile → Application
+Passwords) and paste it into `add-site`.
 
 ## 0.2.0 — Zero-friction onboarding
 
