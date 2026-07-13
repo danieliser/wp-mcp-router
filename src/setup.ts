@@ -30,6 +30,7 @@ import { homedir, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { DEFAULT_MCP_PATH, type SiteConfig } from "./config.js";
+import { userConfigDir } from "./paths.js";
 import { WpClient } from "./wp-client.js";
 
 const APP_NAME = "wp-mcp-router";
@@ -81,12 +82,20 @@ function normalizeSiteUrl(input: string): string {
   return `${u.protocol}//${u.host}`;
 }
 
-/** Default registry path: ./sites.json if we're in a package dir, else XDG. */
+/**
+ * Default registry path. Must resolve identically for add-site and install,
+ * or they split-brain (add-site writes one file, install points the client
+ * at another). Order: explicit env override, an existing ./sites.json (dev
+ * checkout convenience — announced when used), else the per-user config dir.
+ */
 function defaultRegistryPath(): string {
-  const cwdCandidate = join(process.cwd(), "sites.json");
-  if (existsSync(cwdCandidate)) return cwdCandidate;
   if (process.env.WP_MCP_ROUTER_CONFIG) return process.env.WP_MCP_ROUTER_CONFIG;
-  return join(homedir(), ".config", "wp-mcp-router", "sites.json");
+  const cwdCandidate = join(process.cwd(), "sites.json");
+  if (existsSync(cwdCandidate)) {
+    log(`Using registry ${cwdCandidate} (found in current directory)`);
+    return cwdCandidate;
+  }
+  return join(userConfigDir(), "sites.json");
 }
 
 interface Registry {
@@ -429,6 +438,10 @@ function serverEntry(registryPath: string): Record<string, unknown> {
  */
 export async function install(which?: string): Promise<number> {
   const registryPath = defaultRegistryPath();
+  if (!existsSync(registryPath)) {
+    log(`⚠ No site registry at ${registryPath} yet — the server won't start until it exists.`);
+    log(`  Run ${selfCmd("add-site your-site.com")} first (or set WP_MCP_ROUTER_CONFIG to your registry).\n`);
+  }
   const entry = serverEntry(registryPath);
   const all = clientTargets();
   const targets = which

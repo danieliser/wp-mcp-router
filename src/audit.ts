@@ -20,9 +20,10 @@
  *     auditing observes, it doesn't gate.
  */
 
-import { appendFileSync, chmodSync, mkdirSync } from "node:fs";
+import { appendFileSync, chmodSync, existsSync, mkdirSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { userStateDir } from "./paths.js";
 
 /** Substrings that mark a key as credential-shaped (case-insensitive). */
 const SECRET_KEY_PATTERNS = [
@@ -57,10 +58,26 @@ function fullMode(): boolean {
 }
 
 function auditPath(): string {
-  return (
-    process.env.WP_MCP_ROUTER_AUDIT_FILE ||
-    join(homedir(), ".wp-mcp-router", "audit.jsonl")
-  );
+  if (process.env.WP_MCP_ROUTER_AUDIT_FILE) return process.env.WP_MCP_ROUTER_AUDIT_FILE;
+  const path = join(userStateDir(), "audit.jsonl");
+  migrateLegacyLog(path);
+  return path;
+}
+
+let migrationChecked = false;
+/** One-time move of the pre-0.3.2 log (~/.wp-mcp-router/audit.jsonl) to the state dir. */
+function migrateLegacyLog(newPath: string): void {
+  if (migrationChecked) return;
+  migrationChecked = true;
+  const legacy = join(homedir(), ".wp-mcp-router", "audit.jsonl");
+  try {
+    if (existsSync(legacy) && !existsSync(newPath)) {
+      mkdirSync(dirname(newPath), { recursive: true, mode: 0o700 });
+      renameSync(legacy, newPath);
+    }
+  } catch {
+    /* best effort — worst case we start a fresh log */
+  }
 }
 
 function looksSecret(key: string): boolean {

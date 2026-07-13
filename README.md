@@ -53,7 +53,7 @@ priority order:
 1. `WP_MCP_ROUTER_SITES` — the whole registry as inline JSON in one env var.
 2. `WP_MCP_ROUTER_CONFIG` — path to a JSON file.
 3. `./sites.json` next to the package (gitignored).
-4. `~/.config/wp-mcp-router/sites.json`.
+4. `~/.config/wp-mcp-router/sites.json` (Windows: `%APPDATA%\wp-mcp-router\sites.json`).
 
 See [`sites.example.json`](./sites.example.json). Each site needs a `url`, a `username`, and a
 WordPress [Application Password](https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/)
@@ -81,8 +81,9 @@ Useful per-site / global options:
 Auth is per-site WordPress Application Passwords (Basic auth over HTTPS) — scoped, revocable,
 never your real login; rotate by deleting and re-minting the app password. Credentials live
 only in the gitignored registry or env vars, never in the repo or the npm package. Every
-routed call is written to a local audit log (`~/.wp-mcp-router/audit.jsonl`, args redacted,
-owner-only permissions; `WP_MCP_ROUTER_AUDIT=off` disables it).
+routed call is written to a local audit log (`~/.local/state/wp-mcp-router/audit.jsonl`,
+Windows: `%LOCALAPPDATA%\wp-mcp-router\audit.jsonl`; args redacted, owner-only permissions;
+`WP_MCP_ROUTER_AUDIT=off` disables it, `WP_MCP_ROUTER_AUDIT_FILE` relocates it).
 
 **Recommendation:** connect each site as a dedicated limited-role user — enough to edit
 content, not enough to execute code or manage users — so a leaked credential has a small

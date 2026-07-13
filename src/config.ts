@@ -20,6 +20,7 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
+import { userConfigDir } from "./paths.js";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -129,7 +130,7 @@ function resolveRawConfig(): { raw: RawConfig; source: string } {
     process.env.WP_MCP_ROUTER_CONFIG,
     join(process.cwd(), "sites.json"),
     resolve(__dirname, "..", "sites.json"),
-    join(homedir(), ".config", "wp-mcp-router", "sites.json"),
+    join(userConfigDir(), "sites.json"),
   ].filter(Boolean) as string[];
 
   for (const path of candidates) {

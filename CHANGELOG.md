@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.2 — platform-native paths + consistent registry resolution
+
+- **Audit log moved** to the per-user state dir: `~/.local/state/wp-mcp-router/audit.jsonl`
+  (`$XDG_STATE_HOME` honored), Windows `%LOCALAPPDATA%\wp-mcp-router\audit.jsonl`. The old
+  `~/.wp-mcp-router/audit.jsonl` is migrated automatically on first write. Rationale: logs are
+  growing state, not config — and config dirs are what dotfile-sync/backup tools sweep.
+- **Windows-native config path**: the registry fallback is now `%APPDATA%\wp-mcp-router\sites.json`
+  on Windows (unchanged `~/.config/wp-mcp-router/sites.json` elsewhere, `$XDG_CONFIG_HOME` honored).
+- **`add-site` / `install` resolve the registry identically**: `WP_MCP_ROUTER_CONFIG` now wins over
+  a `./sites.json` in the current directory (previously reversed, so the two commands could pick
+  different files depending on where you ran them). When a cwd-local registry is used, it's
+  announced. `install` warns if the registry file it's pointing the client at doesn't exist yet.
+
 ## 0.3.1 — leaner README + doc cleanup
 
 - README rewritten to be short and practical: what it is, quick start, tools,

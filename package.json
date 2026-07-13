@@ -1,6 +1,6 @@
 {
   "name": "wp-mcp-router",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "One MCP connection for a fleet of WordPress sites. Federates several mcp-adapter (Abilities API) sites behind a single MCP server with per-site capability discovery, cross-site search, fan-out, and a site-mismatch guard.",
   "type": "module",
   "bin": {
