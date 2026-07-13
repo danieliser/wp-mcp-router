@@ -9,7 +9,7 @@
       "id": "example",
       "label": "Example Site",
       "url": "https://example.com",
-      "username": "jarvis",
+      "username": "agent",
       "appPassword": "xxxx xxxx xxxx xxxx xxxx xxxx",
       "tags": ["ecommerce", "crm"]
     },
@@ -18,7 +18,7 @@
       "label": "Another Site",
       "url": "https://another.com",
       "endpoint": "https://another.com/wp-json/mcp/my-custom-server",
-      "username": "jarvis",
+      "username": "agent",
       "appPassword": "yyyy yyyy yyyy yyyy yyyy yyyy",
       "excludeFromFanout": true
     },
@@ -26,7 +26,7 @@
       "id": "behind-cf-access",
       "label": "Site behind Cloudflare Access",
       "url": "https://protected.example.com",
-      "username": "jarvis",
+      "username": "agent",
       "appPassword": "zzzz zzzz zzzz zzzz zzzz zzzz",
       "customHeaders": {
         "CF-Access-Client-Id": "your-service-token-id.access",

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 — leaner README + doc cleanup
+
+- README rewritten to be short and practical: what it is, quick start, tools,
+  configuration, security. No behavior changes.
+- Generic example usernames in docs and `sites.example.json`; generalized a few
+  source comments.
+
 ## 0.3.0 — Consistent tool naming
 
 - **Breaking:** renamed `fleet_list_sites` → `wp_list_sites`,

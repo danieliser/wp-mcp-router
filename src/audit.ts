@@ -4,8 +4,8 @@
  * The router is the chokepoint for every call it brokers, so it's the natural
  * place to record a client-side trail: what tool was invoked, against which
  * site/ability, with what args, how long it took, and whether it succeeded.
- * This is independent of (and cross-checkable against) the site-side Jarvis
- * plugin log — two witnesses, no reconciliation required.
+ * This is independent of (and cross-checkable against) any site-side audit
+ * log — two witnesses, no reconciliation required.
  *
  * Design decisions (per project requirements):
  *   - ON BY DEFAULT. Opt out with WP_MCP_ROUTER_AUDIT=off|false|0.

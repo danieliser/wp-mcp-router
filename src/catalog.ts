@@ -4,8 +4,8 @@
  * Why this exists: mcp-adapter's `tools/list` returns the SAME 3 meta-tools on
  * every site (discover-abilities / get-ability-info / execute-ability). The real,
  * DIVERGING capability surface is the set of *abilities* behind discover-abilities
- * — observed live: one production site exposed 128 abilities, another 56, a 72-
- * ability gap covering FluentCRM, Popup Maker, AI, Akismet, etc.
+ * — observed live: one production site exposed 128 abilities, another 56,
+ * depending entirely on which ability-providing plugins each site runs.
  *
  * So "does site B have the thing I want to call?" cannot be answered from the MCP
  * tool list. This module discovers each site's ability catalog, caches it with a
